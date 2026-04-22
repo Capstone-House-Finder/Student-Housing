@@ -1,5 +1,5 @@
 import express from 'express';
-import 'dotenv/config';
+import router from './Routes/listingRoutes.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,6 +11,11 @@ const dbConfig = {
     database: process.env.DB_NAME
 }
 
+app.use('/uploads', express.static('uploads'));
+app.use('/api/listings', router);
+
 app.listen(port, () => {
     console.log(`Server listening at port ${port}`);
 })
+
+export default app;

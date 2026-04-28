@@ -1,0 +1,181 @@
+name: Backend CI
+
+# ── Triggers ───────────────────────────────────────────────────────────────
+# Runs on every Gitflow branch but ONLY when backend-related files change.
+# A frontend-only commit never triggers a backend test run with a MySQL
+# service container — saving significant runner minutes.
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - "feature/**"
+      - "release/**"
+      - "hotfix/**"
+    paths:
+      - "backend/**"
+      - "mysql/**"
+      - ".github/workflows/backend-ci.yml"
+
+  pull_request:
+    branches:
+      - develop
+      - main
+      - "release/**"
+    paths:
+      - "backend/**"
+      - "mysql/**"
+      - ".github/workflows/backend-ci.yml"
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ════════════════════════════════════════════════════════════════
+  # LINT & TYPE-CHECK
+  # No DB needed — runs fast and fails early on code-quality issues.
+  # ════════════════════════════════════════════════════════════════
+  lint:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript type-check
+        run: npm run type-check
+
+  # ════════════════════════════════════════════════════════════════
+  # UNIT + INTEGRATION TESTS
+  # Spins up a real MySQL 8.0 service container and applies the
+  # full schema before running the test suite.
+  # Runs in parallel with lint.
+  # ════════════════════════════════════════════════════════════════
+  test:
+    name: Unit and integration tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: student_housing_test
+          MYSQL_USER: appuser
+          MYSQL_PASSWORD: apppassword
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -prootpassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Apply the same SQL file used by docker-compose locally so CI
+      # always tests against an identical schema to local development.
+      - name: Apply database schema
+        run: |
+          mysql -h 127.0.0.1 -u appuser -papppassword student_housing_test \
+            < ../mysql/init/01_schema.sql
+
+      - name: Run Jest
+        run: npm run test -- --ci --passWithNoTests --coverage
+        env:
+          NODE_ENV: test
+          DATABASE_URL: mysql://appuser:apppassword@127.0.0.1:3306/student_housing_test
+          JWT_SECRET: ci-only-secret-not-used-in-any-real-environment
+          CLOUDINARY_CLOUD_NAME: test
+          CLOUDINARY_API_KEY: test
+          CLOUDINARY_API_SECRET: test
+
+      - name: Upload coverage report
+        if: |
+          github.ref == 'refs/heads/develop' ||
+          github.ref == 'refs/heads/main'    ||
+          startsWith(github.ref, 'refs/heads/release/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-${{ github.run_id }}
+          path: backend/coverage/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════
+  # BUILD
+  # Compiles TypeScript to verify the output is valid JS.
+  # Runs after lint AND tests both pass.
+  # ════════════════════════════════════════════════════════════════
+  build:
+    name: TypeScript build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile TypeScript
+        run: npm run build
+
+      # Cache the compiled dist/ output on integration branches
+      # so the deploy workflow can reuse it without recompiling.
+      - name: Cache build output
+        if: |
+          github.ref == 'refs/heads/develop' ||
+          github.ref == 'refs/heads/main'    ||
+          startsWith(github.ref, 'refs/heads/release/') ||
+          startsWith(github.ref, 'refs/heads/hotfix/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build-${{ github.sha }}
+          path: backend/dist/
+          retention-days: 1

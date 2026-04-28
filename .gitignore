@@ -13,3 +13,10 @@ Thumbs.db
 
 # Node modules (if any at root)
 node_modules/
+
+# miscellaneous
+*.log
+dist/
+build/
+PROJECT_READINESS_REPORT.md
+GitHub_Issues.md

@@ -1,0 +1,65 @@
+name: Release tag
+
+# ── Triggers ───────────────────────────────────────────────────────────────
+# Fires only when a release/* or hotfix/* branch is merged into main.
+# A direct push to main (which shouldn't happen in Gitflow) is ignored.
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+jobs:
+  tag:
+    name: Create release tag
+    runs-on: ubuntu-latest
+
+    # Only run when the PR was actually merged (not just closed/abandoned)
+    # and only when the source branch follows a release/* or hotfix/* pattern.
+    if: |
+      github.event.pull_request.merged == true &&
+      (
+        startsWith(github.event.pull_request.head.ref, 'release/') ||
+        startsWith(github.event.pull_request.head.ref, 'hotfix/')
+      )
+
+    permissions:
+      contents: write   # needed to push the tag
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0   # full history needed for tagging
+
+      # Extract the version from the branch name.
+      # release/1.3.0  → tag v1.3.0
+      # hotfix/1.2.1   → tag v1.2.1
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          # Strip the prefix (release/ or hotfix/) to get the version number
+          VERSION="${BRANCH#release/}"
+          VERSION="${VERSION#hotfix/}"
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Tagging as v$VERSION"
+
+      - name: Create and push git tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.version }} \
+            -m "Release ${{ steps.version.outputs.version }} — merged from ${{ github.event.pull_request.head.ref }}"
+          git push origin ${{ steps.version.outputs.version }}
+
+      # Creates a GitHub Release from the tag so the team gets a changelog link.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "Release ${{ steps.version.outputs.version }}"
+          generate_release_notes: true   # auto-generates notes from merged PR titles

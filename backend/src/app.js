@@ -1,16 +1,68 @@
 import express from 'express';
 import 'dotenv/config';
+import cors from 'cors';
+import listingRoutes from './Routes/listingRoutes.js';
+import userRoutes from './Routes/userRoutes.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { notFound } from './middleware/notFound.js';
+import { getDatabasePool } from './config/database.js';
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 
-const dbConfig = {
-    host: process.env.DB_HOST || "localhost",
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-}
+// Initialize database connection
+const pool = getDatabasePool();
 
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Request logging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+    next();
+});
+
+// Health check endpoint
+app.get('/health', async (req, res) => {
+    try {
+        // Test database connection
+        await pool.getConnection();
+        res.status(200).json({
+            status: 'healthy',
+            database: 'connected',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(503).json({
+            status: 'unhealthy',
+            database: 'disconnected',
+            error: error.message
+        });
+    }
+});
+
+// API Routes
+app.use('/api/listings', listingRoutes);
+app.use('/api/auth', userRoutes);
+
+// 404 handler
+app.use(notFound);
+
+// Error handling middleware (should be last)
+app.use(errorHandler);
+
+// Start server
 app.listen(port, () => {
     console.log(`Server listening at port ${port}`);
-})
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    await pool.end();
+    process.exit(0);
+});
+
+export { pool };

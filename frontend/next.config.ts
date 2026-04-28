@@ -2,8 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: "standalone",
   experimental: {
     turbopackFileSystemCacheForDev: true,
+  },
+  async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://backend:5000";
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${apiUrl}/api/:path*`,
+      },
+    ];
   },
 };
 

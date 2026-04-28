@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node generateToken.js)",
+      "Bash(gh label *)",
+      "Bash(gh issue *)",
+      "Bash(docker compose *)"
+    ]
+  }
+}

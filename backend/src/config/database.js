@@ -7,15 +7,27 @@
  */
 import mysql from 'mysql2/promise';
 
-export function getDatabasePool() {
+let pool = null;
+
+function getDatabasePool() {
+    if (pool) return pool;
+
     const rawUrl = process.env.DATABASE_URL;
     if (!rawUrl) {
+        // Provide a dummy pool for test environments where the database is mocked
+        if (process.env.NODE_ENV === 'test') {
+            pool = {
+                query: async () => [[]],
+                getConnection: async () => ({ release: () => {} }),
+            };
+            return pool;
+        }
         throw new Error('DATABASE_URL not defined in environment variables');
     }
     // Convert aiven:// to mysql:// for the mysql2 driver
     const url = rawUrl.replace(/^aiven:\/\//, 'mysql://');
-    // mysql2 can parse the URL directly
-    const pool = mysql.createPool(url);
+    pool = mysql.createPool(url);
+
     // Optionally test connection once at startup
     pool.getConnection()
         .then(conn => {
@@ -25,5 +37,8 @@ export function getDatabasePool() {
         .catch(err => {
             console.error('❌ Failed to connect to MySQL/Aiven database:', err.message);
         });
+
     return pool;
 }
+
+export { getDatabasePool };

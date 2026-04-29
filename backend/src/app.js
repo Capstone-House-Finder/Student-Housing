@@ -1,5 +1,14 @@
 import express from 'express';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Load .env from project root (not backend directory)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..', '..');
+dotenv.config({ path: path.join(projectRoot, '.env') });
+
 import cors from 'cors';
 import listingRoutes from './Routes/listingRoutes.js';
 import userRoutes from './Routes/userRoutes.js';

@@ -30,7 +30,19 @@ export async function createListing(req, res, next) {
             [title, description, location, price, property_type, landlord_id]
         );
         const listingId = result.insertId;
-        // TODO: Insert amenities linking if needed (omitted for brevity)
+        // Insert amenities linking if provided
+        if (Array.isArray(amenities) && amenities.length) {
+            // Build values string for bulk insert
+            const valuesPlaceholders = amenities.map(() => '(?, ?)').join(', ');
+            const values = [];
+            for (const amenId of amenities) {
+                values.push(listingId, amenId);
+            }
+            await pool.query(
+                `INSERT INTO listing_amenities (listing_id, amenity_id) VALUES ${valuesPlaceholders}`,
+                values
+            );
+        }
         res.status(201).json({ success: true, data: { id: listingId } });
     } catch (err) {
         next(err);
@@ -47,7 +59,16 @@ export async function getListing(req, res, next) {
         if (!rows.length) {
             return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
         }
-        res.status(200).json({ success: true, data: rows[0] });
+        const listing = rows[0];
+        // Fetch linked amenities
+        const [amenRows] = await pool.query(
+            `SELECT a.id, a.name FROM amenities a
+             JOIN listing_amenities la ON a.id = la.amenity_id
+             WHERE la.listing_id = ?`,
+            [id]
+        );
+        listing.amenities = amenRows;
+        res.status(200).json({ success: true, data: listing });
     } catch (err) {
         next(err);
     }
@@ -65,7 +86,7 @@ export async function updateListing(req, res, next) {
         if (Number(ownerRows[0].landlord_id) !== Number(landlord_id)) {
             return res.status(403).json({ success: false, error: { message: 'Forbidden: not the owner' } });
         }
-        // Allow partial updates
+        // Allow partial updates for listing fields
         const fields = [];
         const values = [];
         const allowed = ['title', 'description', 'location', 'price', 'property_type'];
@@ -75,11 +96,30 @@ export async function updateListing(req, res, next) {
                 values.push(req.body[key]);
             }
         }
-        if (!fields.length) {
+        const amenities = req.body.amenities;
+        if (!fields.length && !amenities) {
             return res.status(400).json({ success: false, error: { message: 'No updatable fields provided' } });
         }
-        values.push(id);
-        await pool.query(`UPDATE listings SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`, values);
+        if (fields.length) {
+            values.push(id);
+            await pool.query(`UPDATE listings SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`, values);
+        }
+        // Update amenities if provided
+        if (Array.isArray(amenities)) {
+            // Remove existing links
+            await pool.query('DELETE FROM listing_amenities WHERE listing_id = ?', [id]);
+            if (amenities.length) {
+                const valuesPlaceholders = amenities.map(() => '(?, ?)').join(', ');
+                const amenValues = [];
+                for (const amenId of amenities) {
+                    amenValues.push(id, amenId);
+                }
+                await pool.query(
+                    `INSERT INTO listing_amenities (listing_id, amenity_id) VALUES ${valuesPlaceholders}`,
+                    amenValues
+                );
+            }
+        }
         res.status(200).json({ success: true, message: `Listing ${id} updated` });
     } catch (err) {
         next(err);

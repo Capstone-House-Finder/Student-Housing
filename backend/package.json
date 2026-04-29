@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "npx eslint .",
     "type-check": "echo 'No TypeScript in backend'",
     "build": "echo 'No build step needed'",

@@ -23,7 +23,7 @@ export async function deletePhoto(req, res, next) {
 
 export async function getListingPhotos(req, res, next) {
     try {
-        const { listingId } = req.params;
+        // TODO: Implement - req.params.listingId available
         // TODO: Query photos for a listing
         res.status(200).json({ success: true, data: [] });
     } catch (err) {

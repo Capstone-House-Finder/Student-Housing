@@ -48,6 +48,26 @@ describe('createListing', () => {
     expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 100 } });
   });
 
+  it('creates listing with amenities and links them', async () => {
+    const { req, res, next } = mockReqRes({
+      title: 'House',
+      description: 'Desc',
+      location: 'Town',
+      price: 800,
+      property_type: 'house',
+      amenities: [1, 2, 3],
+    }, {}, { id: 42 });
+
+    // First query: insert listing
+    mockQuery.mockResolvedValueOnce([{ insertId: 101 }]);
+    // Second query: insert amenities linking
+    mockQuery.mockResolvedValueOnce([{}]);
+
+    await listingController.createListing(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 101 } });
+  });
+
   it('returns 400 when required fields are missing', async () => {
     const { req, res, next } = mockReqRes({ title: 'Only title' }, {}, { id: 42 });
     await listingController.createListing(req, res, next);
@@ -70,10 +90,24 @@ describe('getListing', () => {
   it('returns listing when found', async () => {
     const { req, res, next } = mockReqRes({}, { id: 55 });
     const fakeRow = { id: 55, title: 'A' };
+    // First query returns listing row
     mockQuery.mockResolvedValueOnce([[fakeRow]]);
+    // Second query returns amenities (empty for this test)
+    mockQuery.mockResolvedValueOnce([[]]);
     await listingController.getListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: fakeRow });
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { ...fakeRow, amenities: [] } });
+  });
+
+  it('getListing includes amenities when present', async () => {
+    const { req, res, next } = mockReqRes({}, { id: 55 });
+    const fakeRow = { id: 55, title: 'A' };
+    const fakeAmenities = [{ id: 1, name: 'WiFi' }, { id: 2, name: 'Parking' }];
+    mockQuery.mockResolvedValueOnce([[fakeRow]]);
+    mockQuery.mockResolvedValueOnce([fakeAmenities]);
+    await listingController.getListing(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { ...fakeRow, amenities: fakeAmenities } });
   });
 
   it('returns 404 when not found', async () => {
@@ -101,6 +135,20 @@ describe('updateListing', () => {
     expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Listing 10 updated' });
   });
 
+  it('updates amenities when provided', async () => {
+    const { req, res, next } = mockReqRes({ amenities: [2, 4] }, { id: 12 }, { id: 7 });
+    // Owner check
+    mockQuery.mockResolvedValueOnce([[{ landlord_id: 7 }]]);
+    // No field updates, so skip update query
+    // Delete existing amenities
+    mockQuery.mockResolvedValueOnce([{}]);
+    // Insert new amenities linking
+    mockQuery.mockResolvedValueOnce([{}]);
+    await listingController.updateListing(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Listing 12 updated' });
+  });
+
   it('returns 403 when not owner', async () => {
     const { req, res, next } = mockReqRes({ price: 2000 }, { id: 10 }, { id: 5 });
     mockQuery.mockResolvedValueOnce([[{ landlord_id: 7 }]]);
@@ -125,7 +173,7 @@ describe('deleteListing', () => {
   it('deletes when owner', async () => {
     const { req, res, next } = mockReqRes({}, { id: 20 }, { id: 3 });
     mockQuery.mockResolvedValueOnce([[{ landlord_id: 3 }]]);
-    mockQuery.mockResolvedValueOnce([{}]);
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }]);
     await listingController.deleteListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Listing 20 deleted' });

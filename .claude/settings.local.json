@@ -6,7 +6,9 @@
       "Bash(gh issue *)",
       "Bash(docker compose *)",
       "Bash(timeout 10 node src/app.js)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(npm test *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

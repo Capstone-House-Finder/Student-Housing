@@ -177,7 +177,7 @@ CREATE TABLE platform_metrics_cache (
   id          INT       AUTO_INCREMENT PRIMARY KEY,
   metrics     JSON      NOT NULL,
   cached_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  expires_at  TIMESTAMP NOT NULL
+  expires_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ── SEED DATA ─────────────────────────────────────────────────

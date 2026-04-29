@@ -60,11 +60,12 @@ export async function register(req, res, next) {
     const { email, password, role } = validationResult.data;
 
     // 2. Check for duplicate email
-    const [existingUsers] = await pool.query(
+    const queryResult = await pool.query(
       'SELECT id FROM users WHERE email = ? LIMIT 1',
       [email]
     );
-    if (existingUsers.length > 0) {
+    const existingUsers = Array.isArray(queryResult) ? queryResult[0] : [];
+    if (existingUsers && existingUsers.length > 0) {
       return res.status(409).json({
         success: false,
         error: { message: 'Email already registered' },
@@ -127,12 +128,13 @@ export async function login(req, res, next) {
     const { email, password } = validationResult.data;
 
     // 2. Query user by email
-    const [users] = await pool.query(
+    const loginResult = await pool.query(
       'SELECT id, email, password_hash, role FROM users WHERE email = ? LIMIT 1',
       [email]
     );
+    const users = Array.isArray(loginResult) ? loginResult[0] : [];
 
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(401).json({
         success: false,
         error: { message: 'Invalid credentials' },

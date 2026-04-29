@@ -4,7 +4,9 @@
       "Bash(node generateToken.js)",
       "Bash(gh label *)",
       "Bash(gh issue *)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(timeout 10 node src/app.js)",
+      "Bash(git add *)"
     ]
   }
 }

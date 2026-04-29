@@ -160,23 +160,23 @@ jobs:
                    --name "backend-${{ needs.resolve-env.outputs.env_name }}" \
                    -- start
 
-  # ════════════════════════════════════════════════════════════════
-  # NOTIFY — Slack message after deploy (success or failure)
-  # ════════════════════════════════════════════════════════════════
-  notify:
-    name: Slack notification
-    runs-on: ubuntu-latest
-    needs: [resolve-env, deploy-frontend, deploy-backend]
-    if: always() && needs.resolve-env.outputs.env_name != 'none'
+  # # ════════════════════════════════════════════════════════════════
+  # # NOTIFY — Slack message after deploy (success or failure)
+  # # ════════════════════════════════════════════════════════════════
+  # notify:
+  #   name: Slack notification
+  #   runs-on: ubuntu-latest
+  #   needs: [resolve-env, deploy-frontend, deploy-backend]
+  #   if: always() && needs.resolve-env.outputs.env_name != 'none'
 
-    steps:
-      - name: Send result to Slack
-        uses: slackapi/slack-github-action@v1.26.0
-        with:
-          payload: |
-            {
-              "text": "${{ (needs.deploy-frontend.result == 'success' && needs.deploy-backend.result == 'success') && '✅ Deploy succeeded' || '❌ Deploy failed' }} — *${{ github.ref_name }}* → *${{ needs.resolve-env.outputs.env_name }}* — <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+  #   steps:
+  #     - name: Send result to Slack
+  #       uses: slackapi/slack-github-action@v1.26.0
+  #       with:
+  #         payload: |
+  #           {
+  #             "text": "${{ (needs.deploy-frontend.result == 'success' && needs.deploy-backend.result == 'success') && '✅ Deploy succeeded' || '❌ Deploy failed' }} — *${{ github.ref_name }}* → *${{ needs.resolve-env.outputs.env_name }}* — <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+  #           }
+  #       env:
+  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  #         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

@@ -10,7 +10,7 @@ router.get('/', listingController.listAll);
 // Protected routes – require JWT
 router.post('/', authenticate, listingController.createListing);
 router.get('/:id', listingController.getListing);
-router.put('/:id', authenticate, listingController.updateListing);
+router.patch('/:id', authenticate, listingController.updateListing);
 router.delete('/:id', authenticate, listingController.deleteListing);
 
 export default router;

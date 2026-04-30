@@ -96,3 +96,99 @@ export default function PropertyCard({ property, onStatusUpdate, onViewIntereste
     </div>
   );
 }
+
+
+/////
+// frontend/src/components/PropertyCard.tsx
+'use client';
+
+import Image from 'next/image';
+import PropertyStatusSelector from './PropertyStatusSelector';
+import { PropertyStatus } from '@/services/listingService';
+
+interface PropertyCardProps {
+  id: string;
+  title: string;
+  price: number;
+  image?: string;
+  status: PropertyStatus;
+  interestedCount?: number;
+  onStatusChange: (newStatus: PropertyStatus) => void;
+  onViewDetails?: () => void;
+}
+
+export default function PropertyCard({
+  id,
+  title,
+  price,
+  image,
+  status: initialStatus,
+  interestedCount = 0,
+  onStatusChange,
+  onViewDetails,
+}: PropertyCardProps) {
+  const [status, setStatus] = useState(initialStatus);
+
+  const handleStatusChange = (newStatus: PropertyStatus) => {
+    setStatus(newStatus);
+    onStatusChange(newStatus);
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+      {/* Image */}
+      <div className="relative h-48 bg-gray-200">
+        {image ? (
+          <Image src={image} alt={title} fill className="object-cover" />
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-400">
+            No image
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
+          <PropertyStatusSelector
+            listingId={id}
+            currentStatus={status}
+            onStatusChange={handleStatusChange}
+          />
+        </div>
+
+        <p className="text-gray-600 text-sm mb-3">${price}/month</p>
+
+        {/* Interested students count */}
+        {interestedCount > 0 && (
+          <div className="mb-3 p-2 rounded-md" style={{ backgroundColor: '#EA638C10' }}>
+            <p className="text-sm" style={{ color: '#EA638C' }}>
+              🎓 {interestedCount} interested student{interestedCount !== 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={onViewDetails}
+            className="flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            style={{ 
+              backgroundColor: '#190E4F',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#03012C';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#190E4F';
+            }}
+          >
+            View Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

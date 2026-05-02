@@ -19,5 +19,13 @@ export default [
       'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
+    env: {
+      node: true,
+      jest: true,
+    },
+    parseOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+    },
   },
 ];

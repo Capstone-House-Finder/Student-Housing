@@ -30,12 +30,14 @@ export async function createListing(req, res, next) {
             [title, description, location, price, property_type, landlord_id]
         );
         const listingId = result.insertId;
+        const [amenitiesId] = await pool.query('SELECT id FROM amenities WHERE name IN (?)', [amenities]); 
+        const amenitiesIdArray = amenitiesId.map(a => a.id);
         // Insert amenities linking if provided
         if (Array.isArray(amenities) && amenities.length) {
             // Build values string for bulk insert
-            const valuesPlaceholders = amenities.map(() => '(?, ?)').join(', ');
+            const valuesPlaceholders = amenitiesIdArray.map(() => '(?, ?)').join(', ');
             const values = [];
-            for (const amenId of amenities) {
+            for (const amenId of amenitiesIdArray) {
                 values.push(listingId, amenId);
             }
             await pool.query(
@@ -109,9 +111,9 @@ export async function updateListing(req, res, next) {
             // Remove existing links
             await pool.query('DELETE FROM listing_amenities WHERE listing_id = ?', [id]);
             if (amenities.length) {
-                const valuesPlaceholders = amenities.map(() => '(?, ?)').join(', ');
+                const valuesPlaceholders = amenitiesIdArray.map(() => '(?, ?)').join(', ');
                 const amenValues = [];
-                for (const amenId of amenities) {
+                for (const amenId of amenitiesIdArray) {
                     amenValues.push(id, amenId);
                 }
                 await pool.query(

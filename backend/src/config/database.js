@@ -59,8 +59,8 @@ function getDatabasePool() {
     }
 
     // Timeouts to avoid ETIMEDOUT hanging
-    config.connectTimeout = 10000;   // 10s connect timeout
-    config.acquireTimeout = 10000;   // 10s acquire timeout
+    // config.connectTimeout = 10000;   // 10s connect timeout
+    // config.acquireTimeout = 10000;   // 10s acquire timeout
 
     pool = mysql.createPool({
         ...config,
@@ -83,7 +83,7 @@ function getDatabasePool() {
                 port: parseInt(process.env.DB_PORT) || 3306,
                 user: process.env.DB_USER || 'root',
                 password: process.env.DB_PASSWORD || '',
-                database: process.env.DB_NAME,
+                database: process.env.DB_NAME || 'defaultdb',
             };
 
             pool = mysql.createPool({
@@ -96,6 +96,7 @@ function getDatabasePool() {
             pool.getConnection()
                 .then(conn => {
                     console.log('✅ Connected to MySQL database without SSL');
+                    console.log(config);
                     conn.release();
                 })
                 .catch(err => {

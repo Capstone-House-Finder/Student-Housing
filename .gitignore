@@ -20,3 +20,7 @@ dist/
 build/
 PROJECT_READINESS_REPORT.md
 GitHub_Issues.md
+API_Documentation.md
+bug_report.md
+openapi.json
+postman_collection.json

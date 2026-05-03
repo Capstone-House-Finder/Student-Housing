@@ -111,6 +111,9 @@ export async function updateListing(req, res, next) {
             // Remove existing links
             await pool.query('DELETE FROM listing_amenities WHERE listing_id = ?', [id]);
             if (amenities.length) {
+                const [amenitiesId] = await pool.query('SELECT id FROM amenities WHERE name IN (?)', [amenities]);
+                const amenitiesIdArray = amenitiesId.map(a => a.id);
+                // Build values string for bulk insert
                 const valuesPlaceholders = amenitiesIdArray.map(() => '(?, ?)').join(', ');
                 const amenValues = [];
                 for (const amenId of amenitiesIdArray) {

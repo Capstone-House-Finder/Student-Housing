@@ -42,6 +42,9 @@ describe('createListing', () => {
 
     // Simulate successful insert returning insertId
     mockQuery.mockResolvedValueOnce([{ insertId: 100 }]);
+    // Mock the SELECT amenity IDs query (empty since no amenities provided)
+    // pool.query returns [rows, metadata], so mock as [[]]
+    mockQuery.mockResolvedValueOnce([[]]);
 
     await listingController.createListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(201);
@@ -55,12 +58,14 @@ describe('createListing', () => {
       location: 'Town',
       price: 800,
       property_type: 'house',
-      amenities: [1, 2, 3],
+      amenities: ['WiFi', 'Parking'],
     }, {}, { id: 42 });
 
     // First query: insert listing
     mockQuery.mockResolvedValueOnce([{ insertId: 101 }]);
-    // Second query: insert amenities linking
+    // Second query: SELECT amenity IDs by name - returns [rows, metadata]
+    mockQuery.mockResolvedValueOnce([[{ id: 1 }, { id: 2 }]]);
+    // Third query: insert amenities linking
     mockQuery.mockResolvedValueOnce([{}]);
 
     await listingController.createListing(req, res, next);
@@ -136,12 +141,13 @@ describe('updateListing', () => {
   });
 
   it('updates amenities when provided', async () => {
-    const { req, res, next } = mockReqRes({ amenities: [2, 4] }, { id: 12 }, { id: 7 });
+    const { req, res, next } = mockReqRes({ amenities: ['Gym', 'Pool'] }, { id: 12 }, { id: 7 });
     // Owner check
     mockQuery.mockResolvedValueOnce([[{ landlord_id: 7 }]]);
-    // No field updates, so skip update query
     // Delete existing amenities
     mockQuery.mockResolvedValueOnce([{}]);
+    // SELECT amenity IDs by name - returns [rows, metadata]
+    mockQuery.mockResolvedValueOnce([[{ id: 3 }, { id: 4 }]]);
     // Insert new amenities linking
     mockQuery.mockResolvedValueOnce([{}]);
     await listingController.updateListing(req, res, next);

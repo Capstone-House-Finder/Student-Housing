@@ -7,7 +7,7 @@ import { upload } from '../config/uploads.js';
 const router = express.Router();
 
 // Public route – list all listings (could add filters later)
-router.get('/', listingController.listAll);
+router.get('/', listingController.searchListings);
 
 // Protected routes – require JWT
 router.post('/', authenticate, listingController.createListing);

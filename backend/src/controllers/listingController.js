@@ -191,7 +191,87 @@ export async function updateStatus(req, res, next) {
   }
 }
 
-export async function listAll(req, res, next) {
+export async function searchListings(req, res, next) {
+    try {
+        // Extract query parameters
+        const {
+            location,
+            minPrice,
+            maxPrice,
+            property_type,
+            amenities,
+            status,
+            sortBy,
+            page = 1,
+            limit = 20,
+        } = req.query;
+        const where = ['deleted_at IS NULL'];
+        const params = [];
+        if (location) {
+            where.push('location = ?');
+            params.push(location);
+        }
+        if (minPrice) {
+            where.push('price >= ?');
+            params.push(minPrice);
+        }
+        if (maxPrice) {
+            where.push('price <= ?');
+            params.push(maxPrice);
+        }
+        if (property_type) {
+            where.push('property_type = ?');
+            params.push(property_type);
+        }
+        if (status) {
+            where.push('status = ?');
+            params.push(status);
+        }
+        // Base query
+        let query = `SELECT * FROM listings WHERE ${where.join(' AND ')}`;
+        // Sorting
+        const allowedSort = ['price', 'created_at', 'location'];
+        const order = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+        query += ` ORDER BY ${order} DESC`;
+        // Pagination
+        const offset = (Number(page) - 1) * Number(limit);
+        query += ' LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+        const [rows] = await pool.query(query, params);
+        // Total count for pagination metadata
+        const countQuery = `SELECT COUNT(*) as total FROM listings WHERE ${where.join(' AND ')}`;
+        const [countRows] = await pool.query(countQuery, params.slice(0, -2)); // exclude limit/offset
+        const total = countRows[0].total;
+        // Amenities filter (optional, applied after base query if provided)
+        if (amenities) {
+            // Expect amenities as comma‑separated list
+            const amenList = Array.isArray(amenities) ? amenities : String(amenities).split(',');
+            // Filter rows to those that have all requested amenities
+            const filtered = [];
+            for (const listing of rows) {
+                const [amenRows] = await pool.query(
+                    `SELECT a.name FROM amenities a
+                     JOIN listing_amenities la ON a.id = la.amenity_id
+                     WHERE la.listing_id = ?`,
+                    [listing.id]
+                );
+                const listingAmenities = amenRows.map(a => a.name);
+                const hasAll = amenList.every(a => listingAmenities.includes(a.trim()));
+                if (hasAll) filtered.push(listing);
+            }
+            // Replace rows with filtered set and adjust total
+            rows.length = 0;
+            rows.push(...filtered);
+        }
+        res.status(200).json({
+            success: true,
+            data: rows,
+            meta: { total, page: Number(page), limit: Number(limit) },
+        });
+    } catch (err) {
+        next(err);
+    }
+}
     try {
         const [rows] = await pool.query('SELECT * FROM listings WHERE deleted_at IS NULL');
         res.status(200).json({ success: true, data: rows });

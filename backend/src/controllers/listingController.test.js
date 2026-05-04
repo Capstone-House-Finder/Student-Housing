@@ -17,7 +17,7 @@ beforeAll(async () => {
   listingController = mod;
 });
 
-function mockReqRes(body = {}, params = {}, user = null) {
+function mockReqRes(body = {}, params = {}, user = { id: 1 }) {
   return {
     req: { body, params, user },
     res: { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() },
@@ -80,7 +80,7 @@ describe('createListing', () => {
   });
 
   it('returns 401 when unauthenticated', async () => {
-    const { req, res, next } = mockReqRes({ title: 't', description: 'd', location: 'l', price: 1, property_type: 'p' }, {});
+    const { req, res, next } = mockReqRes({ title: 't', description: 'd', location: 'l', price: 1, property_type: 'p' }, {}, null);
     await listingController.createListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
   });
@@ -234,18 +234,26 @@ describe('updateStatus', () => {
     expect(res.status).toHaveBeenCalledWith(403);
   });
 
-describe('listAll', () => {
+describe('searchListings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockQuery.mockReset();
   });
 
-  it('returns array of listings', async () => {
+  it('returns array of listings with pagination meta', async () => {
     const { req, res, next } = mockReqRes();
     const rows = [{ id: 1 }, { id: 2 }];
+    const total = 2;
+    // First query returns rows
     mockQuery.mockResolvedValueOnce([rows]);
-    await listingController.listAll(req, res, next);
+    // Second query returns total count
+    mockQuery.mockResolvedValueOnce([[{ total }]]);
+    await listingController.searchListings(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: rows });
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: rows,
+      meta: { total, page: 1, limit: 20 },
+    });
   });
 });

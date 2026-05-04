@@ -7,18 +7,19 @@ import { upload } from '../config/uploads.js';
 const router = express.Router();
 
 // Public route – list all listings (could add filters later)
-router.get('/', listingController.listAll);
+router.get('/', listingController.randomListings);
+router.get('/search', authenticate, listingController.searchListings);
 
 // Protected routes – require JWT
 router.post('/', authenticate, listingController.createListing);
-router.get('/:id', listingController.getListing);
+router.get('/:id', authenticate, listingController.getListing);
 router.patch('/:id', authenticate, listingController.updateListing);
 router.patch('/:id/status', authenticate, listingController.updateStatus);
 router.delete('/:id', authenticate, listingController.deleteListing);
 
 // Photo routes
 router.post('/:id/photos', authenticate, upload.array('photos', 10), photoController.uploadPhotos);
-router.get('/:id/photos', photoController.getListingPhotos);
+router.get('/:id/photos', authenticate, photoController.getListingPhotos);
 router.delete('/photos/:photoId', authenticate, photoController.deletePhoto);
 
 export default router;

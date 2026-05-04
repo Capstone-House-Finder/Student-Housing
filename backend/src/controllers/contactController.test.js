@@ -26,7 +26,7 @@ describe('BE-09: Contact Listing Endpoint', () => {
     mockQuery.mockReset();
   });
 
-  it('creates a new conversation and returns 201', async () => {
+  it('creates a new conversation and returns 201 with WhatsApp URL', async () => {
     const { req, res, next } = mockReqRes({ id: 10 }, { id: 5 });
     // Listing exists
     mockQuery.mockResolvedValueOnce([[{ landlord_id: 2 }]]);
@@ -34,10 +34,18 @@ describe('BE-09: Contact Listing Endpoint', () => {
     mockQuery.mockResolvedValueOnce([[]]);
     // Insert returns insertId
     mockQuery.mockResolvedValueOnce([[{ insertId: 99 }]]);
+    // Mock student profile query
+    mockQuery.mockResolvedValueOnce([[{ full_name: 'Alice', phone: '123456789' }]]);
+    // Mock landlord profile query
+    mockQuery.mockResolvedValueOnce([[{ phone: '987654321' }]]);
 
     await contactListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: { conversationId: 99 } });
+    const jsonArg = res.json.mock.calls[0][0];
+    expect(jsonArg.success).toBe(true);
+    expect(jsonArg.data.conversationId).toBe(99);
+    // Verify URL format
+    expect(jsonArg.data.whatsappUrl).toMatch(/^https:\/\/wa\.me\/987654321\?text=/);
   });
 
   it('returns existing conversation id with 200', async () => {

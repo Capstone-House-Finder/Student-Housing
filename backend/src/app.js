@@ -14,6 +14,7 @@ import listingRoutes from './Routes/listingRoutes.js';
 import userRoutes from './Routes/userRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
+// Removed WhatsApp routes; functionality integrated into contact endpoint
 import { getDatabasePool } from './config/database.js';
 
 const app = express();

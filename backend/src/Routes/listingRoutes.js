@@ -13,6 +13,7 @@ router.get('/', listingController.listAll);
 router.post('/', authenticate, listingController.createListing);
 router.get('/:id', listingController.getListing);
 router.patch('/:id', authenticate, listingController.updateListing);
+router.patch('/:id/status', authenticate, listingController.updateStatus);
 router.delete('/:id', authenticate, listingController.deleteListing);
 
 // Photo routes

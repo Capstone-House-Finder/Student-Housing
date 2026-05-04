@@ -1,22 +1,7 @@
 import multer from 'multer';
-import path from 'path';
-import crypto from 'crypto';
 
-// Destination folder for uploads – ensure the folder exists in the repo
-const uploadDir = path.resolve('uploads');
-
-// Multer storage configuration – unique filenames
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        const unique = crypto.randomBytes(6).toString('hex');
-        const timestamp = Date.now();
-        cb(null, `${timestamp}-${unique}${ext}`);
-    }
-});
+// Memory storage – files are kept as Buffer in req.file.buffer
+const storage = multer.memoryStorage();
 
 // File filter – accept only images up to 5MB
 function fileFilter(req, file, cb) {

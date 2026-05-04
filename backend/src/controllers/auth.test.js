@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 process.env.JWT_SECRET = 'test-secret';
 

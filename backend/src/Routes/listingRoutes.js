@@ -1,6 +1,7 @@
 import express from 'express';
 import * as listingController from '../controllers/listingController.js';
 import * as photoController from '../controllers/photoController.js';
+import * as contactController from '../controllers/contactController.js';
 import { authenticate } from '../middleware/auth.js';
 import { upload } from '../config/uploads.js';
 
@@ -19,6 +20,8 @@ router.delete('/:id', authenticate, listingController.deleteListing);
 
 // Photo routes
 router.post('/:id/photos', authenticate, upload.array('photos', 10), photoController.uploadPhotos);
+// Contact endpoint – student initiates contact with landlord
+router.post('/:id/contact', authenticate, contactController.contactListing);
 router.get('/:id/photos', authenticate, photoController.getListingPhotos);
 router.delete('/photos/:photoId', authenticate, photoController.deletePhoto);
 

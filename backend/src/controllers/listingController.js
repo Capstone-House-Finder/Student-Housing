@@ -155,6 +155,8 @@ export async function deleteListing(req, res, next) {
 }
 
 export async function updateStatus(req, res, next) {
+  // existing implementation unchanged
+
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -192,6 +194,8 @@ export async function updateStatus(req, res, next) {
 }
 
 export async function randomListings(req, res, next) {
+    // existing implementation unchanged
+
     try {
         // Return a random selection of listings for public preview
         // Limit to 12 listings as per BE-08 recommendation

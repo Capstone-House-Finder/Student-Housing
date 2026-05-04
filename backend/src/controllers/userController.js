@@ -33,6 +33,11 @@ const registerSchema = z.object({
     .regex(/[0-9]/, { message: 'Password must contain at least one number' })
     .regex(/[^a-zA-Z0-9]/, { message: 'Password must contain at least one special character' }),
   role: z.enum(['student', 'landlord', 'admin']).optional().default('student'),
+  // Optional profile fields
+  full_name: z.string().optional(),
+  phone: z.string().optional(),
+  avatar_url: z.string().url().optional(),
+  bio: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -76,13 +81,21 @@ export async function register(req, res, next) {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // 4. Store user in users table
+    // 4. Store user in users table and optionally create profile
     const [result] = await pool.query(
       'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
       [email, passwordHash, role]
     );
 
     const userId = result.insertId;
+    // Insert profile if any optional fields are provided
+    const { full_name, phone, avatar_url, bio } = validationResult.data;
+    if (full_name || phone || avatar_url || bio) {
+      await pool.query(
+        'INSERT INTO user_profiles (user_id, full_name, phone, avatar_url, bio) VALUES (?, ?, ?, ?, ?)',
+        [userId, full_name || null, phone || null, avatar_url || null, bio || null]
+      );
+    }
 
     // 5. Generate JWT with payload { id, role }
     const token = jwt.sign(

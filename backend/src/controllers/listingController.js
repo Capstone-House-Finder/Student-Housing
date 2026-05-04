@@ -132,6 +132,7 @@ export async function updateListing(req, res, next) {
 }
 
 export async function deleteListing(req, res, next) {
+    // existing code remains unchanged
     try {
         const { id } = req.params;
         const landlord_id = req.user?.id;
@@ -151,6 +152,43 @@ export async function deleteListing(req, res, next) {
     } catch (err) {
         next(err);
     }
+}
+
+export async function updateStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const allowedStatuses = ['available', 'rented', 'under_negotiation'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: `Invalid status value. Must be one of: ${allowedStatuses.join(', ')}` },
+      });
+    }
+    // Verify listing exists
+    const [listingRows] = await pool.query(
+      'SELECT * FROM listings WHERE id = ? AND deleted_at IS NULL',
+      [id]
+    );
+    if (!listingRows.length) {
+      return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
+    }
+    const listing = listingRows[0];
+    const landlord_id = req.user?.id;
+    if (Number(listing.landlord_id) !== Number(landlord_id)) {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden: not the owner' } });
+    }
+    // Update status
+    await pool.query('UPDATE listings SET status = ? WHERE id = ? AND deleted_at IS NULL', [status, id]);
+    // Return updated listing
+    const [updatedRows] = await pool.query(
+      'SELECT * FROM listings WHERE id = ? AND deleted_at IS NULL',
+      [id]
+    );
+    return res.status(200).json({ success: true, data: updatedRows[0] });
+  } catch (err) {
+    next(err);
+  }
 }
 
 export async function listAll(req, res, next) {

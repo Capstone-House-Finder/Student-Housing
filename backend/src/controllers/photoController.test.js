@@ -230,7 +230,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
 
     it('should delete photo successfully', async () => {
       const { req, res, next } = mockReqRes(
-        { id: String(photoId) },
+        { photoId: String(photoId) },
         {},
         { id: landlordId }
       );
@@ -258,7 +258,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
 
     it('should return 400 for invalid photo ID', async () => {
       const { req, res, next } = mockReqRes(
-        { id: 'abc' },
+        { photoId: 'abc' },
         {},
         { id: landlordId }
       );
@@ -273,7 +273,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
 
     it('should return 404 if photo not found', async () => {
       const { req, res, next } = mockReqRes(
-        { id: String(photoId) },
+        { photoId: String(photoId) },
         {},
         { id: landlordId }
       );
@@ -291,7 +291,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
 
     it('should return 403 if user is not the listing owner', async () => {
       const { req, res, next } = mockReqRes(
-        { id: String(photoId) },
+        { photoId: String(photoId) },
         {},
         { id: 999 } // different user
       );
@@ -311,7 +311,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
 
     it('should handle DB errors gracefully', async () => {
       const { req, res, next } = mockReqRes(
-        { id: String(photoId) },
+        { photoId: String(photoId) },
         {},
         { id: landlordId }
       );

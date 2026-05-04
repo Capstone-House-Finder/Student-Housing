@@ -191,7 +191,25 @@ export async function updateStatus(req, res, next) {
   }
 }
 
+export async function randomListings(req, res, next) {
+    try {
+        // Return a random selection of listings for public preview
+        // Limit to 12 listings as per BE-08 recommendation
+        const [rows] = await pool.query(
+            'SELECT id, title, price, location, property_type FROM listings WHERE deleted_at IS NULL ORDER BY RAND() LIMIT 12'
+        );
+        res.status(200).json({ success: true, data: rows });
+    } catch (err) {
+        next(err);
+    }
+}
+
 export async function searchListings(req, res, next) {
+    // Require authentication
+    const landlord_id = req.user?.id;
+    if (!landlord_id) {
+        return res.status(401).json({ success: false, error: { message: 'Unauthenticated' } });
+    }
     try {
         // Extract query parameters
         const {
@@ -204,7 +222,7 @@ export async function searchListings(req, res, next) {
             sortBy,
             page = 1,
             limit = 20,
-        } = req.query;
+        } = req.query || {};
         const where = ['deleted_at IS NULL'];
         const params = [];
         if (location) {
@@ -268,13 +286,7 @@ export async function searchListings(req, res, next) {
             data: rows,
             meta: { total, page: Number(page), limit: Number(limit) },
         });
-    } catch (err) {
-        next(err);
-    }
-}
-    try {
-        const [rows] = await pool.query('SELECT * FROM listings WHERE deleted_at IS NULL');
-        res.status(200).json({ success: true, data: rows });
+        return;
     } catch (err) {
         next(err);
     }

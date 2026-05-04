@@ -171,6 +171,48 @@ describe('updateListing', () => {
 });
 
 describe('deleteListing', () => {
+  // existing deleteListing tests remain unchanged
+});
+
+describe('updateStatus', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockQuery.mockReset();
+  });
+
+  it('updates status when owner and valid status', async () => {
+    const { req, res, next } = mockReqRes({ status: 'rented' }, { id: 15 }, { id: 7 });
+    // Owner check returns listing with landlord_id 7
+    mockQuery.mockResolvedValueOnce([[{ landlord_id: 7, status: 'available' }]]);
+    // Update query resolves
+    mockQuery.mockResolvedValueOnce([{}]);
+    // Return updated listing
+    mockQuery.mockResolvedValueOnce([[{ id: 15, status: 'rented', landlord_id: 7 }]]);
+    await listingController.updateStatus(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 15, status: 'rented', landlord_id: 7 } });
+  });
+
+  it('returns 400 for invalid status', async () => {
+    const { req, res, next } = mockReqRes({ status: 'invalid' }, { id: 20 }, { id: 7 });
+    await listingController.updateStatus(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 403 when not the owner', async () => {
+    const { req, res, next } = mockReqRes({ status: 'available' }, { id: 30 }, { id: 5 });
+    mockQuery.mockResolvedValueOnce([[{ landlord_id: 9, status: 'available' }]]);
+    await listingController.updateStatus(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('returns 404 when listing not found', async () => {
+    const { req, res, next } = mockReqRes({ status: 'available' }, { id: 99 }, { id: 7 });
+    mockQuery.mockResolvedValueOnce([[]]); // No listing found
+    await listingController.updateStatus(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+});
   beforeEach(() => {
     jest.clearAllMocks();
     mockQuery.mockReset();
@@ -191,7 +233,6 @@ describe('deleteListing', () => {
     await listingController.deleteListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(403);
   });
-});
 
 describe('listAll', () => {
   beforeEach(() => {

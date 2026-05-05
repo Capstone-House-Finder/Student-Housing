@@ -1,3 +1,4 @@
+/* global beforeAll */
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 // Mock the pool exported from app.js

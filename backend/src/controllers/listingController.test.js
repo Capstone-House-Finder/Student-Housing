@@ -2,6 +2,7 @@
  * Listing controller unit tests covering CRUD behavior.
  * Uses Jest ESM mocking to replace the DB pool.
  */
+/* global beforeAll */
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 // Mock the pool exported from app.js

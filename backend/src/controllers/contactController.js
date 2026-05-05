@@ -1,6 +1,7 @@
 // Contact controller – implements student contacting landlord for a listing (BE-09)
 
 import { pool } from '../app.js';
+import { URL, URLSearchParams } from 'url';
 
 export async function contactListing(req, res, next) {
   // Note: WhatsApp integration (sending a message) is not performed here. The endpoint only creates the conversation and returns a Click‑to‑Chat URL.

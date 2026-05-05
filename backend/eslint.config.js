@@ -19,13 +19,8 @@ export default [
       'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
-    env: {
-      node: true,
-      jest: true,
-    },
-    parseOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
-    },
+    // Removed unsupported 'env' and 'parseOptions' keys for flat config compatibility.
+    // Node.js globals are already provided via 'globals' above, and Jest globals are not needed for linting.
+
   },
 ];

@@ -3,6 +3,7 @@
  * Handles SSL/TLS encryption with proper certificate.
  */
 import mysql from 'mysql2/promise';
+import { URL } from 'url';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

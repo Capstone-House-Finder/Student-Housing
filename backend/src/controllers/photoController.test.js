@@ -74,7 +74,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
       // Mock Cloudinary upload_stream for first file
       mockCloudinaryUpload.mockImplementationOnce((opts, callback) => {
         const stream = {
-          end: jest.fn((buffer) => {
+          end: jest.fn((_buffer) => {
             callback(null, {
               secure_url: 'https://res.cloudinary.com/demo/image/upload/photo1.jpg',
               public_id: 'student-housing/listing-123/photo1',
@@ -87,7 +87,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
       // Mock Cloudinary upload_stream for second file
       mockCloudinaryUpload.mockImplementationOnce((opts, callback) => {
         const stream = {
-          end: jest.fn((buffer) => {
+          end: jest.fn((_buffer) => {
             callback(null, {
               secure_url: 'https://res.cloudinary.com/demo/image/upload/photo2.jpg',
               public_id: 'student-housing/listing-123/photo2',
@@ -205,7 +205,7 @@ describe('BE-05: Photo Upload Endpoint', () => {
       // Mock Cloudinary upload for first file
       mockCloudinaryUpload.mockImplementationOnce((opts, callback) => {
         const stream = {
-          end: jest.fn((buffer) => {
+          end: jest.fn((_buffer) => {
             callback(null, {
               secure_url: 'https://res.cloudinary.com/demo/image/upload/photo1.jpg',
               public_id: 'student-housing/listing-123/photo1',

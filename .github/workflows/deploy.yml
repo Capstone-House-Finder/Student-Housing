@@ -83,18 +83,18 @@ jobs:
             docker compose exec backend npm run migrate:latest
 
   # Notify Slack
-  notify:
-    name: Notify Slack
-    needs: [deploy-frontend, deploy-backend]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Slack notification
-        uses: slackapi/slack-github-action@v1.26.0
-        with:
-          payload: |
-            {
-              "text": "*${{ job.status }}* – Deploy of `${{ github.ref_name }}` to `${{ needs.resolve-env.outputs.env_name }}` completed.\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  # notify:
+  #   name: Notify Slack
+  #   needs: [deploy-frontend, deploy-backend]
+  #   if: always()
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Send Slack notification
+  #       uses: slackapi/slack-github-action@v1.26.0
+  #       with:
+  #         payload: |
+  #           {
+  #             "text": "*${{ job.status }}* – Deploy of `${{ github.ref_name }}` to `${{ needs.resolve-env.outputs.env_name }}` completed.\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  #           }
+  #       env:
+  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

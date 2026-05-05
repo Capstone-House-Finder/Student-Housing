@@ -112,6 +112,14 @@ jobs:
       # always tests against an identical schema to local development.
       - name: Apply database schema
         run: |
+          # Create the app user separately — IDENTIFIED BY syntax was removed in MySQL 8.0
+          mysql -h 127.0.0.1 -u root -prootpassword -e "
+            CREATE USER IF NOT EXISTS 'appuser'@'%' IDENTIFIED BY 'apppassword';
+            GRANT ALL PRIVILEGES ON student_housing_test.* TO 'appuser'@'%';
+            FLUSH PRIVILEGES;
+          "
+
+          # Apply the schema using the app user
           mysql -h 127.0.0.1 -u appuser -papppassword student_housing_test \
             < ../mysql/init/01_schema.sql
 

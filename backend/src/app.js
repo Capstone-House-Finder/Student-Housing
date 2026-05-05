@@ -13,6 +13,7 @@ import cors from 'cors';
 import listingRoutes from './Routes/listingRoutes.js';
 import rentalRoutes from './Routes/rentalRoutes.js';
 import userRoutes from './Routes/userRoutes.js';
+import reportRoutes from './Routes/reportRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 // Removed WhatsApp routes; functionality integrated into contact endpoint
@@ -58,6 +59,7 @@ app.get('/health', async (req, res) => {
 app.use('/api/listings', listingRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/auth', userRoutes);
+app.use('/api/reports', reportRoutes);
 
 // 404 handler
 app.use(notFound);

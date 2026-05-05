@@ -26,3 +26,4 @@ openapi.json
 postman_collection.json
 docs/
 backend/uploads/
+package.json

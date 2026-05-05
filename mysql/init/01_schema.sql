@@ -1,7 +1,7 @@
 -- ============================================================
 -- Student Housing Platform — Database Schema
 -- ============================================================
-CREATE DATABASE IF NOT EXISTS student_housing;
+CREATE DATABASE IF NOT EXISTS student_housing_test;
 
 USE student_housing;
 

@@ -108,6 +108,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Grant CREATE USER privilege to appuser
+        run: |
+          mysql -h 127.0.0.1 -u root -prootpassword student_housing_test \
+            -e "GRANT CREATE USER ON *.* TO 'appuser'@'%' IDENTIFIED BY 'apppassword'; FLUSH PRIVILEGES;"
+
       # Apply the same SQL file used by docker-compose locally so CI
       # always tests against an identical schema to local development.
       - name: Apply database schema

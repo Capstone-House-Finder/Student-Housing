@@ -2,8 +2,10 @@
 -- Student Housing Platform — Database Schema
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS student_housing_test;
+CREATE USER IF NOT EXISTS 'appuser'@'%' IDENTIFIED BY 'apppassword';
+GRANT ALL PRIVILEGES ON student_housing_test.* TO 'appuser'@'%';
 
-USE student_housing;
+USE student_housing_test;
 
 -- ── ENUMS (simulated via column constraints in MySQL) ────────
 

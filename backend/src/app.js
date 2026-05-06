@@ -10,6 +10,7 @@ const projectRoot = path.resolve(__dirname, '..', '..');
 dotenv.config({ path: path.join(projectRoot, '.env') });
 
 import cors from 'cors';
+import adminRoutes from './Routes/adminRoutes.js';
 import listingRoutes from './Routes/listingRoutes.js';
 import rentalRoutes from './Routes/rentalRoutes.js';
 import userRoutes from './Routes/userRoutes.js';
@@ -60,6 +61,7 @@ app.use('/api/listings', listingRoutes);
 app.use('/api/rentals', rentalRoutes);
 app.use('/api/auth', userRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use(notFound);

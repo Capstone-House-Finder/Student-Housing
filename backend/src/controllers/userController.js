@@ -251,3 +251,72 @@ export async function updateProfile(req, res, next) {
     next(err);
   }
 }
+// ── Admin: Get All Users ─────────────────────────────────────────────────
+export async function getAllUsers(req, res, next) {
+  const pool = getPoolInstance();
+  try {
+    const [users] = await pool.query(
+      'SELECT id, email, role, status, created_at FROM users',
+      []
+    );
+    res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Admin: Suspend User ─────────────────────────────────────────────────
+export async function suspendUser(req, res, next) {
+  const pool = getPoolInstance();
+  const userId = parseInt(req.params.id, 10);
+  try {
+    // Verify user exists and is active
+    const [rows] = await pool.query(
+      'SELECT id FROM users WHERE id = ? AND status = ?',
+      [userId, 'active']
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'User not found or already suspended' },
+      });
+    }
+    await pool.query('UPDATE users SET status = ? WHERE id = ?', ['suspended', userId]);
+    // Invalidate tokens – optional: add to blocklist if needed
+    res.status(200).json({
+      success: true,
+      message: 'User suspended',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Admin: Delete (Anonymize) User ────────────────────────────────────────
+export async function deleteUser(req, res, next) {
+  const pool = getPoolInstance();
+  const userId = parseInt(req.params.id, 10);
+  try {
+    // Remove profile data
+    await pool.query('DELETE FROM user_profiles WHERE user_id = ?', [userId]);
+    // Delete listings owned by the user (will cascade to related tables)
+    await pool.query('DELETE FROM listings WHERE landlord_id = ?', [userId]);
+    // Delete rentals where user is student or landlord
+    await pool.query('DELETE FROM rentals WHERE student_id = ? OR landlord_id = ?', [userId, userId]);
+    // Delete reviews authored by the user
+    await pool.query('DELETE FROM reviews WHERE student_id = ?', [userId]);
+    // Anonymize email and suspend account
+    const anonymizedEmail = `deleted_${userId}@example.com`;
+    await pool.query('UPDATE users SET email = ?, role = ? WHERE id = ?', [anonymizedEmail, 'suspended', userId]);
+    res.status(200).json({
+      success: true,
+      message: 'User deleted (anonymized) and related data removed',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+

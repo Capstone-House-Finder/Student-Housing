@@ -55,7 +55,7 @@ export async function getListing(req, res, next) {
     try {
         const { id } = req.params;
         const [rows] = await pool.query(
-            'SELECT * FROM listings WHERE id = ? AND deleted_at IS NULL',
+            'SELECT * FROM listings WHERE id = ? AND deleted_at IS NULL AND flagged = false',
             [id]
         );
         if (!rows.length) {
@@ -200,7 +200,7 @@ export async function randomListings(req, res, next) {
         // Return a random selection of listings for public preview
         // Limit to 12 listings as per BE-08 recommendation
         const [rows] = await pool.query(
-            'SELECT id, title, price, location, property_type FROM listings WHERE deleted_at IS NULL ORDER BY RAND() LIMIT 12'
+            'SELECT id, title, price, location, property_type FROM listings WHERE deleted_at IS NULL AND flagged = false ORDER BY RAND() LIMIT 12'
         );
         res.status(200).json({ success: true, data: rows });
     } catch (err) {
@@ -227,7 +227,7 @@ export async function searchListings(req, res, next) {
             page = 1,
             limit = 20,
         } = req.query || {};
-        const where = ['deleted_at IS NULL'];
+        const where = ['deleted_at IS NULL', 'flagged = false'];
         const params = [];
         if (location) {
             where.push('location = ?');

@@ -1,5 +1,6 @@
 import express from 'express';
 import * as userController from '../controllers/userController.js';
+import * as metricsController from '../controllers/metricsController.js';
 import { admin } from '../middleware/admin.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -7,6 +8,7 @@ const router = express.Router();
 
 // Admin routes
 router.get('/users', authenticate, admin, userController.getAllUsers);
+router.get('/metrics', authenticate, admin, metricsController.getMetrics);
 router.patch('/users/:id/suspend', authenticate, admin, userController.suspendUser);
 router.delete('/users/:id', authenticate, admin, userController.deleteUser);
 // Admin listing moderation endpoints

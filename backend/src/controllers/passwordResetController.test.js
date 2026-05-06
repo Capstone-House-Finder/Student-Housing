@@ -10,6 +10,15 @@ jest.unstable_mockModule('../config/database.js', () => ({
   getDatabasePool: jest.fn(() => ({ query: mockQuery })),
 }));
 
+// Mock nodemailer
+jest.unstable_mockModule('nodemailer', () => ({
+  default: {
+    createTransport: jest.fn(() => ({
+      sendMail: jest.fn().mockResolvedValue({ messageId: 'test-id' }),
+    })),
+  },
+}));
+
 let forgotPassword, resetPassword;
 
 beforeAll(async () => {

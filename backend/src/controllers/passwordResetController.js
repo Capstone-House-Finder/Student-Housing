@@ -2,6 +2,7 @@
 
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import nodemailer from 'nodemailer';
 import { z } from 'zod';
 import { getDatabasePool } from '../config/database.js';
 
@@ -63,7 +64,26 @@ export async function forgotPassword(req, res, next) {
     if (user.status !== 'suspended') {
       await pool.query('UPDATE users SET status = ? WHERE id = ?', ['suspended', user.id]);
     }
-    // TODO: Send email containing rawToken link
+    // Send email containing rawToken link
+    try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT, 10),
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      });
+      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
+      await transporter.sendMail({
+        from: `"No Reply" <no-reply@${process.env.EMAIL_HOST}>`,
+        to: email,
+        subject: 'Password Reset Request',
+        text: `You requested a password reset. Click the link to reset your password: ${resetLink}`,
+      });
+    } catch (mailErr) {
+      console.error('Failed to send password reset email:', mailErr);
+    }
     console.log(`Password reset token for user ${user.id}: ${rawToken}`);
     return res.status(200).json({ success: true, message: 'If the email is registered, a reset link will be sent.' });
   } catch (err) {

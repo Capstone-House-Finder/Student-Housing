@@ -15,6 +15,7 @@ import listingRoutes from './Routes/listingRoutes.js';
 import rentalRoutes from './Routes/rentalRoutes.js';
 import userRoutes from './Routes/userRoutes.js';
 import reportRoutes from './Routes/reportRoutes.js';
+import reviewRoutes from './Routes/reviewRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 // Removed WhatsApp routes; functionality integrated into contact endpoint

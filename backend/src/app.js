@@ -63,6 +63,7 @@ app.use('/api/rentals', rentalRoutes);
 app.use('/api/auth', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // 404 handler
 app.use(notFound);

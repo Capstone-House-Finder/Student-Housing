@@ -320,3 +320,56 @@ export async function deleteUser(req, res, next) {
   }
 }
 
+// ── Admin: Listing Moderation ────────────────────────────────────────
+export async function getAdminListings(req, res, next) {
+  const pool = getPoolInstance();
+  try {
+    // Return flagged listings that are not deleted
+    const [listings] = await pool.query(
+      'SELECT * FROM listings WHERE flagged = true AND deleted_at IS NULL',
+      []
+    );
+    res.status(200).json({ success: true, data: listings });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function verifyListing(req, res, next) {
+  const pool = getPoolInstance();
+  const listingId = parseInt(req.params.id, 10);
+  try {
+    // Mark listing as verified and clear flagged
+    const [result] = await pool.query(
+      'UPDATE listings SET verified = true, flagged = false WHERE id = ? AND deleted_at IS NULL',
+      [listingId]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
+    }
+    // Return updated listing
+    const [rows] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
+    res.status(200).json({ success: true, data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteListingAdmin(req, res, next) {
+  const pool = getPoolInstance();
+  const listingId = parseInt(req.params.id, 10);
+  try {
+    // Soft delete the listing
+    const [result] = await pool.query(
+      'UPDATE listings SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND deleted_at IS NULL',
+      [listingId]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
+    }
+    res.status(200).json({ success: true, message: `Listing ${listingId} deleted` });
+  } catch (err) {
+    next(err);
+  }
+}
+

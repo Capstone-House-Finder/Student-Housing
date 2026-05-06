@@ -310,7 +310,7 @@ export async function deleteUser(req, res, next) {
     await pool.query('DELETE FROM reviews WHERE student_id = ?', [userId]);
     // Anonymize email and suspend account
     const anonymizedEmail = `deleted_${userId}@example.com`;
-    await pool.query('UPDATE users SET email = ?, status = ?, role = ? WHERE id = ?', [anonymizedEmail, 'suspended', 'student', userId]);
+    await pool.query('UPDATE users SET email = ?, role = ? WHERE id = ?', [anonymizedEmail, 'suspended', userId]);
     res.status(200).json({
       success: true,
       message: 'User deleted (anonymized) and related data removed',

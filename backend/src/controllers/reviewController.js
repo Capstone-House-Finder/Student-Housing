@@ -43,9 +43,10 @@ export async function createReview(req, res, next) {
     }
 
     // Insert the review
+    const rentalId = rentalRows[0].id;
     const [result] = await pool.query(
-      'INSERT INTO reviews (listing_id, student_id, rating, comment) VALUES (?, ?, ?, ?)',
-      [listingId, student.id, ratingNum, comment]
+      'INSERT INTO reviews (listing_id, student_id, rental_id, rating, comment) VALUES (?, ?, ?, ?, ?)',
+      [listingId, student.id, rentalId, ratingNum, comment]
     );
     const reviewId = result.insertId;
     return res.status(201).json({ success: true, data: { id: reviewId } });

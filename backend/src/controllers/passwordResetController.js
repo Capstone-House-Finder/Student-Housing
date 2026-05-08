@@ -2,7 +2,6 @@
 
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import { z } from 'zod';
 import { getDatabasePool } from '../config/database.js';
 
@@ -66,24 +65,24 @@ export async function forgotPassword(req, res, next) {
     }
     // Send email containing rawToken link
     try {
-      const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: parseInt(process.env.EMAIL_PORT, 10),
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD,
-        },
-      });
+      const { sendEmail } = await import('../config/email.js');
       const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
-      await transporter.sendMail({
-        from: `"No Reply" <no-reply@${process.env.EMAIL_HOST}>`,
+      await sendEmail({
         to: email,
         subject: 'Password Reset Request',
         text: `You requested a password reset. Click the link to reset your password: ${resetLink}`,
+        html: `<div style="font-family: sans-serif; padding: 20px;">
+          <h2 style="color: #0d6efd;">Password Reset Request</h2>
+          <p>You requested a password reset for your Student Housing account.</p>
+          <p>Click the button below to reset your password. This link is valid for 1 hour.</p>
+          <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #0d6efd; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+          <p style="margin-top: 20px; color: #666; font-size: 12px;">If you did not request this, please ignore this email.</p>
+        </div>`
       });
     } catch (mailErr) {
       console.error('Failed to send password reset email:', mailErr);
     }
+
     console.log(`Password reset token for user ${user.id}: ${rawToken}`);
     return res.status(200).json({ success: true, message: 'If the email is registered, a reset link will be sent.' });
   } catch (err) {

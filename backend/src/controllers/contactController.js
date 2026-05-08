@@ -36,15 +36,16 @@ export async function contactListing(req, res, next) {
       'SELECT u.email, up.full_name FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.id = ?',
       [studentId]
     );
-    
-    const [landlordProfileRows] = await pool.query(
-      'SELECT phone FROM user_profiles WHERE user_id = ?',
+
+    const [landlordDataRows] = await pool.query(
+      'SELECT u.email, up.phone FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.id = ?',
       [landlordId]
     );
-    
+
     const studentEmail = studentRows[0]?.email || '';
     const studentFullName = studentRows[0]?.full_name || 'Student';
-    const landlordPhone = landlordProfileRows[0]?.phone;
+    const landlordEmail = landlordDataRows[0]?.email;
+    const landlordPhone = landlordDataRows[0]?.phone;
 
     // New Inquiry Template
     const message = `Title: Listing Inquiry\nFrom: ${studentEmail}\n\nGreetings.\n\tI am ${studentFullName}, and I am interested by your property ${listingTitle} located at ${listingLocation}. I would really appreciate if we could discuss about it via this channel.`;
@@ -55,6 +56,22 @@ export async function contactListing(req, res, next) {
       url.search = new URLSearchParams({ text: message }).toString();
       whatsappUrl = url.toString();
     }
+
+    // Send email notification to landlord
+    const { sendEmail } = await import('../config/email.js');
+    await sendEmail({
+      to: landlordEmail,
+      subject: `New Inquiry for ${listingTitle}`,
+      text: message,
+      html: `<div style="font-family: sans-serif; padding: 20px;">
+        <h2 style="color: #0d6efd;">Listing Inquiry</h2>
+        <p>Greetings.</p>
+        <p>I am <strong>${studentFullName}</strong>, and I am interested in your property <strong>${listingTitle}</strong> located at <strong>${listingLocation}</strong>.</p>
+        <p>I would really appreciate if we could discuss about it via WhatsApp: <a href="${whatsappUrl}">${whatsappUrl}</a></p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #666; font-size: 12px;">This is an automated notification from Student Housing Platform.</p>
+      </div>`
+    }).catch(err => console.error('Failed to send contact email:', err));
 
 
     // Check if conversation already exists (unique per student/listing)

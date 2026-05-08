@@ -1,10 +1,16 @@
 import express from 'express';
-import { submitReport } from '../controllers/reportController.js';
+import * as reportController from '../controllers/reportController.js';
 import { authenticate } from '../middleware/auth.js';
+import { admin } from '../middleware/admin.js';
 
 const router = express.Router();
 
-// All report submissions require authentication (students only, but role check can be done inside controller if needed)
-router.post('/', authenticate, submitReport);
+// Report submission
+router.post('/', authenticate, reportController.submitReport);
+
+// Admin moderation
+router.get('/', authenticate, admin, reportController.getAllReports);
+router.patch('/:id/status', authenticate, admin, reportController.updateReportStatus);
 
 export default router;
+

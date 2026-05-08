@@ -168,7 +168,7 @@ CREATE TABLE reports (
   target_type ENUM('listing','user') NOT NULL,
   target_id   INT         NOT NULL,
   reason      TEXT        NOT NULL,
-  status      ENUM('pending','reviewed','dismissed') NOT NULL DEFAULT 'pending',
+  status      ENUM('pending','reviewed','resolved','dismissed') NOT NULL DEFAULT 'pending',
   created_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_target (target_type, target_id),

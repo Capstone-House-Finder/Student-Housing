@@ -18,12 +18,6 @@ node_modules/
 *.log
 dist/
 build/
-PROJECT_READINESS_REPORT.md
-API_Documentation.md
-bug_report.md
-openapi.json
-postman_collection.json
 backend/uploads/
-package.json
 .cline/
-docs/
+docs

@@ -54,6 +54,16 @@ cd frontend && npm install
 
 ## 🚀 Deployment Workflow
 
+### 📢 Release v1.5.0 – Highlights
+
+- Added full suite of feature branches covering user registration, login/logout, multi‑step listing creation, property‑status management, search & filter UI, property detail page, student & landlord dashboards, password reset flow, guest preview page, review/rating submission UI, and report submission UI.
+- Introduced shared/common updates: global layout, CI workflows, Docker configuration, documentation, UI primitives, and snapshot assets.
+- Updated backend controllers (metrics, contact, listing) with new endpoints, validation, CSV export, WhatsApp integration, and improved error handling.
+- Added comprehensive test coverage for new features and fixed failing tests.
+- See full release notes in [RELEASE_NOTES.md](RELEASE_NOTES.md) for details.
+
+
+
 ### GitHub Integration
 1. After cloning the repo:
    ```bash

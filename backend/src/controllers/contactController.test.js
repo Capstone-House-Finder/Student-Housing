@@ -7,11 +7,17 @@ jest.unstable_mockModule('../app.js', () => ({
   pool: { query: mockQuery },
 }));
 
+// Mock the email config to avoid real email operations and side effects during tests
+jest.unstable_mockModule('../config/email.js', () => ({
+  sendEmail: jest.fn().mockResolvedValue({ success: true }),
+}));
+
 let contactListing;
 beforeAll(async () => {
   const mod = await import('./contactController.js');
   contactListing = mod.contactListing;
 });
+
 
 function mockReqRes(params = {}, user = { id: 1 }) {
   return {
@@ -29,16 +35,16 @@ describe('BE-09: Contact Listing Endpoint', () => {
 
   it('creates a new conversation and returns 201 with WhatsApp URL', async () => {
     const { req, res, next } = mockReqRes({ id: 10 }, { id: 5 });
-    // Listing exists
-    mockQuery.mockResolvedValueOnce([[{ landlord_id: 2 }]]);
-    // No existing conversation
+    // 1. Listing exists
+    mockQuery.mockResolvedValueOnce([[{ landlord_id: 2, title: 'Test Room', location: 'City' }]]);
+    // 2. Student info
+    mockQuery.mockResolvedValueOnce([[{ email: 'student@test.com', full_name: 'Alice' }]]);
+    // 3. Landlord info
+    mockQuery.mockResolvedValueOnce([[{ email: 'landlord@test.com', phone: '987654321' }]]);
+    // 4. No existing conversation
     mockQuery.mockResolvedValueOnce([[]]);
-    // Insert returns insertId
+    // 5. Insert returns insertId
     mockQuery.mockResolvedValueOnce([[{ insertId: 99 }]]);
-    // Mock student profile query
-    mockQuery.mockResolvedValueOnce([[{ full_name: 'Alice', phone: '123456789' }]]);
-    // Mock landlord profile query
-    mockQuery.mockResolvedValueOnce([[{ phone: '987654321' }]]);
 
     await contactListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(201);
@@ -49,15 +55,29 @@ describe('BE-09: Contact Listing Endpoint', () => {
     expect(jsonArg.data.whatsappUrl).toMatch(/^https:\/\/wa\.me\/987654321\?text=/);
   });
 
+
   it('returns existing conversation id with 200', async () => {
     const { req, res, next } = mockReqRes({ id: 11 }, { id: 6 });
-    mockQuery.mockResolvedValueOnce([[{ landlord_id: 3 }]]); // listing lookup
-    mockQuery.mockResolvedValueOnce([[{ id: 55 }]]); // existing conversation
+    // 1. Listing exists
+    mockQuery.mockResolvedValueOnce([[{ landlord_id: 3, title: 'Room 2', location: 'Town' }]]);
+    // 2. Student info
+    mockQuery.mockResolvedValueOnce([[{ email: 's2@test.com', full_name: 'Bob' }]]);
+    // 3. Landlord info
+    mockQuery.mockResolvedValueOnce([[{ email: 'l2@test.com', phone: '111222333' }]]);
+    // 4. Existing conversation
+    mockQuery.mockResolvedValueOnce([[{ id: 55 }]]);
 
     await contactListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: { conversationId: 55 } });
+    expect(res.json).toHaveBeenCalledWith({ 
+      success: true, 
+      data: { 
+        conversationId: 55, 
+        whatsappUrl: expect.stringContaining('https://wa.me/111222333') 
+      } 
+    });
   });
+
 
   it('returns 404 when listing not found', async () => {
     const { req, res, next } = mockReqRes({ id: 999 }, { id: 7 });

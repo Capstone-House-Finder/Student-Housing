@@ -253,10 +253,6 @@ export async function randomListings(req, res, next) {
 
 export async function searchListings(req, res, next) {
     // Require authentication
-    const landlord_id = req.user?.id;
-    if (!landlord_id) {
-        return res.status(401).json({ success: false, error: { message: 'Unauthenticated' } });
-    }
     try {
         // Extract query parameters
         const {

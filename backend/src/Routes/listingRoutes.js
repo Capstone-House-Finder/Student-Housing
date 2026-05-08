@@ -11,11 +11,9 @@ const router = express.Router();
 // Public route – list all listings (could add filters later)
 router.get('/', listingController.randomListings);
 router.get('/search', authenticate, listingController.searchListings);
-router.get('/landlord-dashboard', authenticate, listingController.getLandlordDashboard);
-router.get('/student-dashboard', authenticate, listingController.getStudentDashboard);
 
 // Protected routes – require JWT
-router.post('/', authenticate, upload.array('photos', 5), listingController.createListing);
+router.post('/', authenticate, listingController.createListing);
 // Review endpoint for students to submit a review
 router.post('/:id/reviews', authenticate, reviewController.createReview);
 router.get('/:id', authenticate, listingController.getListing);
@@ -23,7 +21,7 @@ router.patch('/:id', authenticate, listingController.updateListing);
 router.patch('/:id/status', authenticate, listingController.updateStatus);
 router.delete('/:id', authenticate, listingController.deleteListing);
 
-// Photo routes
+// Photo routes9
 router.post('/:id/photos', authenticate, upload.array('photos', 10), photoController.uploadPhotos);
 // Contact endpoint – student initiates contact with landlord
 router.post('/:id/contact', authenticate, contactController.contactListing);

@@ -10,22 +10,19 @@ jest.unstable_mockModule('../config/database.js', () => ({
   getDatabasePool: jest.fn(() => ({ query: mockQuery })),
 }));
 
-// Mock nodemailer
-jest.unstable_mockModule('nodemailer', () => ({
-  default: {
-    createTransport: jest.fn(() => ({
-      sendMail: jest.fn().mockResolvedValue({ messageId: 'test-id' }),
-    })),
-  },
+// Mock the email config to avoid real email operations
+jest.unstable_mockModule('../config/email.js', () => ({
+  sendEmail: jest.fn().mockResolvedValue({ success: true }),
 }));
 
 let forgotPassword, resetPassword;
 
 beforeAll(async () => {
-  const mod = await import('../../src/controllers/passwordResetController.js');
+  const mod = await import('./passwordResetController.js');
   forgotPassword = mod.forgotPassword;
   resetPassword = mod.resetPassword;
 });
+
 
 function mockReqRes(body = {}, user = null) {
   return {

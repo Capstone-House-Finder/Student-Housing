@@ -86,10 +86,16 @@ app.use(notFound);
 // Error handling middleware (should be last)
 app.use(errorHandler);
 
+/** 
+ * Uncomment the following lines to enable HTTPS with self-signed certificates for local development.
+ * Make sure to generate cert.pem and key.pem files and place them in the config directory.
+ * Note: Browsers will show a security warning for self-signed certificates.
 // Start server
 app.listen(port, () => {
     console.log(`Server listening at port ${port}`);
 });
+
+*/
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
@@ -99,3 +105,6 @@ process.on('SIGTERM', async () => {
 });
 
 export { pool };
+
+// Export app for testing purposes
+export default app;

@@ -8,5 +8,7 @@ const router = express.Router();
 
 // Create rental record (landlord or admin only)
 router.post('/', authenticate, rentalController.createRental);
+router.get('/landlord', authenticate, rentalController.getLandlordRentals);
+
 
 export default router;

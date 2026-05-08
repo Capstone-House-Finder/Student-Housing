@@ -11,9 +11,11 @@ const router = express.Router();
 // Public route – list all listings (could add filters later)
 router.get('/', listingController.randomListings);
 router.get('/search', authenticate, listingController.searchListings);
+router.get('/landlord-dashboard', authenticate, listingController.getLandlordDashboard);
+router.get('/student-dashboard', authenticate, listingController.getStudentDashboard);
 
 // Protected routes – require JWT
-router.post('/', authenticate, listingController.createListing);
+router.post('/', authenticate, upload.array('photos', 5), listingController.createListing);
 // Review endpoint for students to submit a review
 router.post('/:id/reviews', authenticate, reviewController.createReview);
 router.get('/:id', authenticate, listingController.getListing);

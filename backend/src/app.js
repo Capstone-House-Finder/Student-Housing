@@ -16,7 +16,10 @@ import rentalRoutes from './Routes/rentalRoutes.js';
 import userRoutes from './Routes/userRoutes.js';
 import reportRoutes from './Routes/reportRoutes.js';
 import reviewRoutes from './Routes/reviewRoutes.js';
+import amenityRoutes from './Routes/amenityRoutes.js';
+import contactRoutes from './Routes/contactRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
+
 import { notFound } from './middleware/notFound.js';
 // Removed WhatsApp routes; functionality integrated into contact endpoint
 import { getDatabasePool } from './config/database.js';
@@ -27,8 +30,17 @@ const port = process.env.PORT || 5000;
 // Initialize database connection
 const pool = getDatabasePool();
 
+// Cors configuration (allow frontend origin)
+const corsOptions = {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    optionsSuccessStatus: 200,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
+app.use(cors(corsOptions));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -64,6 +76,9 @@ app.use('/api/auth', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/amenities', amenityRoutes);
+app.use('/api/contacts', contactRoutes);
+
 
 // 404 handler
 app.use(notFound);

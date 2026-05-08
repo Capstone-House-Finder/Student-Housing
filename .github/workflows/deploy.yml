@@ -22,11 +22,12 @@ jobs:
       - id: env-map
         run: |
           case "${GITHUB_REF_NAME}" in
-            develop)   echo "::set-output name=env_name::staging" ;;
-            release/*) echo "::set-output name=env_name::uat" ;;
-            main|hotfix/*) echo "::set-output name=env_name::production" ;;
-            *)         echo "::set-output name=env_name::none" ;;
+            develop)   echo "env_name=staging" >> $GITHUB_OUTPUT ;;
+            release/*) echo "env_name=uat" >> $GITHUB_OUTPUT ;;
+            main|hotfix/*) echo "env_name=production" >> $GITHUB_OUTPUT ;;
+            *)         echo "env_name=none" >> $GITHUB_OUTPUT ;;
           esac
+
 
   # Deploy Frontend
   deploy-frontend:
@@ -64,10 +65,6 @@ jobs:
     environment:
       name: ${{ needs.resolve-env.outputs.env_name }}
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: backend-build-${{ github.sha }}
-          path: backend-build/
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:

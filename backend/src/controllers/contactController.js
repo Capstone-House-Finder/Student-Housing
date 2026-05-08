@@ -19,67 +19,101 @@ export async function contactListing(req, res, next) {
     // }
 
     const listingId = req.params.id;
-    // Verify listing exists and fetch landlord_id
+    // Verify listing exists and fetch landlord_id and listing info
     const [listingRows] = await pool.query(
-      'SELECT landlord_id FROM listings WHERE id = ? AND deleted_at IS NULL',
+      'SELECT landlord_id, title, location FROM listings WHERE id = ? AND deleted_at IS NULL',
       [listingId]
     );
     if (!listingRows.length) {
       return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
     }
-    const landlordId = listingRows[0].landlord_id;
+    const { landlord_id: landlordId, title: listingTitle, location: listingLocation } = listingRows[0];
+
+    // Build WhatsApp URL to send to frontend
+    let whatsappUrl = null;
+
+    const [studentRows] = await pool.query(
+      'SELECT u.email, up.full_name FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.id = ?',
+      [studentId]
+    );
+    
+    const [landlordProfileRows] = await pool.query(
+      'SELECT phone FROM user_profiles WHERE user_id = ?',
+      [landlordId]
+    );
+    
+    const studentEmail = studentRows[0]?.email || '';
+    const studentFullName = studentRows[0]?.full_name || 'Student';
+    const landlordPhone = landlordProfileRows[0]?.phone;
+
+    // New Inquiry Template
+    const message = `Title: Listing Inquiry\nFrom: ${studentEmail}\n\nGreetings.\n\tI am ${studentFullName}, and I am interested by your property ${listingTitle} located at ${listingLocation}. I would really appreciate if we could discuss about it via this channel.`;
+
+    if (landlordPhone) {
+      const base = `https://wa.me/${landlordPhone}`;
+      const url = new URL(base);
+      url.search = new URLSearchParams({ text: message }).toString();
+      whatsappUrl = url.toString();
+    }
+
 
     // Check if conversation already exists (unique per student/listing)
     const [existing] = await pool.query(
       'SELECT id FROM conversations WHERE student_id = ? AND listing_id = ?',
       [studentId, listingId]
     );
+
     if (existing.length) {
-      // Conversation already exists – return existing id
-      return res.status(200).json({ success: true, data: { conversationId: existing[0].id } });
+      // Conversation already exists – return existing id and the generated whatsappUrl
+      return res.status(200).json({ success: true, data: { conversationId: existing[0].id, whatsappUrl } });
     }
 
     // Create new conversation
-    // Insert new conversation and extract insertId handling different mock shapes
     const insertResult = await pool.query(
       'INSERT INTO conversations (student_id, landlord_id, listing_id) VALUES (?, ?, ?)',
       [studentId, landlordId, listingId]
     );
     let conversationId;
     if (Array.isArray(insertResult) && insertResult[0] && typeof insertResult[0] === 'object' && 'insertId' in insertResult[0]) {
-      // Shape: [{ insertId: 99 }]
       conversationId = insertResult[0].insertId;
     } else if (Array.isArray(insertResult) && Array.isArray(insertResult[0]) && insertResult[0][0] && typeof insertResult[0][0] === 'object' && 'insertId' in insertResult[0][0]) {
-      // Shape: [[{ insertId: 99 }]]
       conversationId = insertResult[0][0].insertId;
     }
-    // Build WhatsApp URL to send to frontend
-    let whatsappUrl = null;
 
-    const [studentProfileRows] = await pool.query(
-        'SELECT full_name, phone FROM user_profiles WHERE user_id = ?',
-        [studentId]
-      );
-      const [landlordProfileRows] = await pool.query(
-        'SELECT phone FROM user_profiles WHERE user_id = ?',
-        [landlordId]
-      );
-      const studentFullName = studentProfileRows[0]?.full_name || 'Student';
-      const studentPhone = studentProfileRows[0]?.phone || '';
-      const landlordPhone = landlordProfileRows[0]?.phone;
-      
-      // Build the same message used for notification
-      const message = `New inquiry for listing ${listingId}: ${studentFullName}${studentPhone ? ' (Phone: ' + studentPhone + ')' : ''} wants to contact you.`;
-      if (landlordPhone) {
-        const base = `https://wa.me/${landlordPhone}`;
-        const url = new URL(base);
-        url.search = new URLSearchParams({ text: message }).toString();
-        whatsappUrl = url.toString();
-      }
-    
-    // Respond with conversation ID and WhatsApp URL (if generated)
+    // Respond with conversation ID and WhatsApp URL
     return res.status(201).json({ success: true, data: { conversationId, whatsappUrl } });
   } catch (err) {
     next(err);
   }
 }
+
+export async function getLandlordContacts(req, res, next) {
+  try {
+    const landlordId = req.user?.id;
+    if (!landlordId) {
+      return res.status(401).json({ success: false, error: { message: 'Unauthenticated' } });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT 
+        c.id, 
+        c.created_at, 
+        u.email as student_email, 
+        up.full_name as student_name, 
+        l.title as listing_title,
+        l.id as listing_id
+      FROM conversations c
+      JOIN users u ON c.student_id = u.id
+      LEFT JOIN user_profiles up ON c.student_id = up.user_id
+      JOIN listings l ON c.listing_id = l.id
+      WHERE c.landlord_id = ?
+      ORDER BY c.created_at DESC`,
+      [landlordId]
+    );
+
+    res.status(200).json({ success: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+}
+

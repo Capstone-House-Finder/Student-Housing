@@ -47,3 +47,38 @@ export async function submitReport(req, res, next) {
     next(err);
   }
 }
+
+export async function getAllReports(req, res, next) {
+  try {
+    const [reports] = await pool.query('SELECT * FROM reports ORDER BY created_at DESC');
+    return res.status(200).json({ success: true, data: reports });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateReportStatus(req, res, next) {
+  try {
+    const reportId = req.params.id;
+    const { status } = req.body;
+
+    if (!['pending', 'reviewed', 'resolved', 'dismissed'].includes(status)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid status' } });
+    }
+
+
+    const [result] = await pool.query(
+      'UPDATE reports SET status = ? WHERE id = ?',
+      [status, reportId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: { message: 'Report not found' } });
+    }
+
+    return res.status(200).json({ success: true, message: `Report ${status}` });
+  } catch (err) {
+    next(err);
+  }
+}
+

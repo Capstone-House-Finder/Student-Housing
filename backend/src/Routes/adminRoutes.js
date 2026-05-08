@@ -9,6 +9,8 @@ const router = express.Router();
 // Admin routes
 router.get('/users', authenticate, admin, userController.getAllUsers);
 router.get('/metrics', authenticate, admin, metricsController.getMetrics);
+router.get('/stats', authenticate, admin, metricsController.getMetrics); // Compatibility alias
+router.get('/activity', authenticate, admin, metricsController.getRecentActivity);
 router.patch('/users/:id/suspend', authenticate, admin, userController.suspendUser);
 router.delete('/users/:id', authenticate, admin, userController.deleteUser);
 // Admin listing moderation endpoints

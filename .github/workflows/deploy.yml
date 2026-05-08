@@ -1,0 +1,97 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - "release/**"
+      - "hotfix/**"
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Resolve the target environment based on the branch name
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.env-map.outputs.env_name }}
+    steps:
+      - id: env-map
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            develop)   echo "env_name=staging" >> $GITHUB_OUTPUT ;;
+            release/*) echo "env_name=uat" >> $GITHUB_OUTPUT ;;
+            main|hotfix/*) echo "env_name=production" >> $GITHUB_OUTPUT ;;
+            *)         echo "env_name=none" >> $GITHUB_OUTPUT ;;
+          esac
+
+
+  # Deploy Frontend
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: resolve-env
+    if: needs.resolve-env.outputs.env_name != 'none'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.resolve-env.outputs.env_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: frontend-build/
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: API_URL
+          script: |
+            cd /var/www/housefinder/frontend
+            git fetch --all
+            git checkout ${{ github.ref_name }}
+            docker compose -f docker-compose.yml -f docker-compose.${{ needs.resolve-env.outputs.env_name }}.yml up -d --build --remove-orphans
+            docker image prune -f
+
+  # Deploy Backend
+  deploy-backend:
+    name: Deploy Backend
+    needs: resolve-env
+    if: needs.resolve-env.outputs.env_name != 'none'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.resolve-env.outputs.env_name }}
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DATABASE_URL,JWT_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
+          script: |
+            cd /var/www/housefinder/backend
+            git fetch --all
+            git checkout ${{ github.ref_name }}
+            docker compose -f docker-compose.yml -f docker-compose.${{ needs.resolve-env.outputs.env_name }}.yml up -d --build --remove-orphans
+            docker compose exec backend npm run migrate:latest
+
+  # Notify Slack
+  # notify:
+  #   name: Notify Slack
+  #   needs: [deploy-frontend, deploy-backend]
+  #   if: always()
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Send Slack notification
+  #       uses: slackapi/slack-github-action@v1.26.0
+  #       with:
+  #         payload: |
+  #           {
+  #             "text": "*${{ job.status }}* – Deploy of `${{ github.ref_name }}` to `${{ needs.resolve-env.outputs.env_name }}` completed.\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  #           }
+  #       env:
+  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

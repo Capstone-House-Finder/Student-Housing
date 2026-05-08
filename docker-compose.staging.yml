@@ -1,0 +1,19 @@
+# docker-compose.staging.yml
+# Overrides for the staging environment.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+services:
+  backend:
+    # Remove the dev source-mount — run compiled output only.
+    volumes: []
+    environment:
+      NODE_ENV: staging
+
+  frontend:
+    environment:
+      NODE_ENV: staging
+
+  mysql:
+    # Do not expose MySQL port to the host on staging — backend accesses it
+    # via the internal Docker network only.
+    ports: []

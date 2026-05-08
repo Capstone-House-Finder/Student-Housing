@@ -1,0 +1,23 @@
+# docker-compose.prod.yml
+# Overrides for the production environment.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  backend:
+    volumes: []
+    environment:
+      NODE_ENV: production
+    # In production the DB is a managed service (e.g. PlanetScale, RDS),
+    # so we don't run the MySQL container — DATABASE_URL points externally.
+    depends_on: []
+
+  frontend:
+    environment:
+      NODE_ENV: production
+    depends_on: []
+
+  # Do not start the MySQL container in production.
+  # Comment this out if you ARE running MySQL on the same host.
+  mysql:
+    profiles:
+      - donotstart

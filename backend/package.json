@@ -3,21 +3,31 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "lint": "npx eslint .",
+    "type-check": "echo 'No TypeScript in backend'",
+    "build": "echo 'No build step needed'",
     "dev": "nodemon src/app.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "type": "module",
   "dependencies": {
+    "nodemailer": "^6.9.13",
+    "bcrypt": "^5.1.1",
     "bootstrap": "^5.3.8",
+    "cloudinary": "^2.10.0",
+    "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mysql2": "^3.22.1"
+    "jest": "^29.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.1.1",
+    "mysql2": "^3.22.1",
+    "supertest": "^6.2.3",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "eslint": "^9.0.0",
     "nodemon": "^3.1.14"
-  }
+  },
+  "type": "module"
 }
+

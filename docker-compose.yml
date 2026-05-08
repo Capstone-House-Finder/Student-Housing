@@ -1,0 +1,142 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# docker-compose.yml — Student Housing Platform
+#
+# Usage:
+#   Local dev  →  docker compose up --build
+#   Staging    →  docker compose -f docker-compose.yml \
+#                               -f docker-compose.staging.yml up -d
+#   Production →  docker compose -f docker-compose.yml \
+#                               -f docker-compose.prod.yml up -d
+#
+# All environment-specific overrides live in the override files so this base
+# file stays clean and environment-agnostic.
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── MySQL ────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: student_housing_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE:      ${MYSQL_DATABASE:-student_housing}
+      MYSQL_USER:          ${MYSQL_USER:-appuser}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      # Named volume persists data between container restarts and rebuilds.
+      - mysql_data:/var/lib/mysql
+      # Auto-runs all *.sql files in this folder on first boot only.
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - internal
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin_dashboard
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql       
+      PMA_PORT: 3306      # Internal port
+      PMA_ARBITRARY: 1    # Allows you to enter any server/username on login
+    ports:
+      - "8080:80"   # Access phpMyAdmin at http://localhost:8080
+
+
+  # ── Backend (Node.js API) ────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runner          # use the final production stage
+    container_name: student_housing_api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy   # wait until MySQL passes its healthcheck
+    environment:
+      NODE_ENV:    ${NODE_ENV:-development}
+      PORT:        5000
+      DATABASE_URL: mysql://${MYSQL_USER:-appuser}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-student_housing}
+      JWT_SECRET:               ${JWT_SECRET}
+      CLOUDINARY_CLOUD_NAME:    ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY:       ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET:    ${CLOUDINARY_API_SECRET}
+      EMAIL_HOST:               ${EMAIL_HOST}
+      EMAIL_PORT:               ${EMAIL_PORT:-587}
+      EMAIL_USER:               ${EMAIL_USER}
+      EMAIL_PASSWORD:           ${EMAIL_PASSWORD}
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    volumes:
+      # In development only: mount source so changes reflect without rebuild.
+      # The override file removes this in staging/prod.
+      - ./backend/src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - internal
+      - external
+
+  # ── Frontend (Next.js) ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        # Passed to Next.js at build time — inlined into the client bundle.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+    container_name: student_housing_web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy   # wait until the API is ready
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT:     3000
+      # Server-side API URL — used by Next.js rewrites proxy.
+      # Inside Docker Compose, services talk to each other by service name.
+      NEXT_PUBLIC_API_URL: http://backend:5000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - external
+
+# ── Networks ───────────────────────────────────────────────────────────────
+networks:
+  internal:
+    # MySQL and the backend talk on this private network.
+    # The frontend cannot reach MySQL directly — only via the API.
+    driver: bridge
+    internal: true
+  external:
+    # The backend and frontend are reachable from the host machine.
+    driver: bridge
+
+# ── Volumes ────────────────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    driver: local

@@ -11,6 +11,8 @@ const router = express.Router();
 // Public route – list all listings (could add filters later)
 router.get('/', listingController.randomListings);
 router.get('/search', authenticate, listingController.searchListings);
+router.get('/student-dashboard', authenticate, listingController.getStudentDashboard);
+router.get('/landlord-dashboard', authenticate, listingController.getLandlordDashboard);
 
 // Protected routes – require JWT
 router.post('/', authenticate, listingController.createListing);

@@ -17,93 +17,91 @@ let pool = null;
 function getDatabasePool() {
     if (pool) return pool;
 
-    // Build config from DATABASE_URL or individual DB_* env vars
     let config;
     const rawUrl = process.env.DATABASE_URL;
+    
     if (rawUrl) {
-        const urlObj = new URL(rawUrl);
-        config = {
-            host: urlObj.hostname,
-            port: parseInt(urlObj.port) || 3306,
-            user: urlObj.username,
-            password: urlObj.password,
-            database: urlObj.pathname.slice(1) || 'defaultdb',
-        };
-    } else if (process.env.DB_HOST && process.env.DB_NAME) {
+        try {
+            const urlObj = new URL(rawUrl);
+            config = {
+                host: urlObj.hostname,
+                port: parseInt(urlObj.port) || 3306,
+                user: urlObj.username,
+                password: urlObj.password,
+                database: urlObj.pathname.slice(1) || 'defaultdb',
+            };
+            console.log(`📡 Configuring connection for remote host: ${config.host}`);
+        } catch (err) {
+            console.error('❌ Failed to parse DATABASE_URL:', err.message);
+        }
+    } 
+    
+    if (!config && process.env.DB_HOST) {
         config = {
             host: process.env.DB_HOST,
             port: parseInt(process.env.DB_PORT) || 3306,
             user: process.env.DB_USER || 'root',
             password: process.env.DB_PASSWORD || '',
-            database: process.env.DB_NAME,
+            database: process.env.DB_NAME || 'student_housing',
         };
-    } else if (process.env.NODE_ENV === 'test') {
-        // Dummy pool for test environments
-        pool = {
-            query: async () => [[]],
-            getConnection: async () => ({ release: () => {} }),
-        };
-        return pool;
+    }
+
+    if (!config) {
+        if (process.env.NODE_ENV === 'test') {
+            return {
+                query: async () => [[]],
+                getConnection: async () => ({ release: () => {} }),
+            };
+        }
+        throw new Error('Database connection info missing. Set DATABASE_URL or DB_HOST.');
+    }
+
+    // SSL Configuration
+    // Prefer certificate content from ENV (for Vercel), fallback to file
+    if (process.env.DB_CA_CERT) {
+        config.ssl = { ca: process.env.DB_CA_CERT, rejectUnauthorized: true };
+        console.log('🔒 Using SSL certificate from environment variable');
     } else {
-        throw new Error('Database connection info missing. Set DATABASE_URL or DB_HOST/DB_NAME.');
+        const certPath = path.join(projectRoot, 'certs', 'ca.pem');
+        try {
+            if (fs.existsSync(certPath)) {
+                const ca = fs.readFileSync(certPath, 'utf-8');
+                config.ssl = { ca, rejectUnauthorized: true };
+                console.log('✅ Loaded SSL certificate from certs/ca.pem');
+            }
+        } catch (err) {
+            console.warn('⚠️  Could not load SSL certificate file:', err.message);
+        }
     }
-
-    // Load Aiven CA certificate
-    const certPath = path.join(projectRoot, 'certs', 'ca.pem');
-    try {
-        const ca = fs.readFileSync(certPath, 'utf-8');
-        config.ssl = { ca, rejectUnauthorized: true };
-        console.log('✅ Loaded SSL certificate from certs/ca.pem');
-    } catch (err) {
-        console.warn('⚠️  Could not load SSL certificate, using no SSL:', err.message);
-        config.ssl = undefined;
-    }
-
-    // Timeouts to avoid ETIMEDOUT hanging
-    // config.connectTimeout = 10000;   // 10s connect timeout
-    // config.acquireTimeout = 10000;   // 10s acquire timeout
 
     pool = mysql.createPool({
         ...config,
         waitForConnections: true,
         connectionLimit: 10,
         queueLimit: 0,
+        connectTimeout: 10000,
     });
 
-    // Test connection at startup
+    // Test connection
     pool.getConnection()
         .then(conn => {
-            console.log('✅ Connected to MySQL/Aiven database');
+            console.log(`✅ Successfully connected to database at ${config.host}`);
             conn.release();
         })
         .catch(err => {
-            console.error('❌ Failed to connect to MySQL/Aiven database:', err.message);
-            
-            config = {
-                host: process.env.DB_HOST,
-                port: parseInt(process.env.DB_PORT) || 3306,
-                user: process.env.DB_USER || 'root',
-                password: process.env.DB_PASSWORD || '',
-                database: process.env.DB_NAME || 'defaultdb',
-            };
-
-            pool = mysql.createPool({
-                ...config,
-                waitForConnections: true,
-                connectionLimit: 10,
-                queueLimit: 0,
-            });
-
-            pool.getConnection()
-                .then(conn => {
-                    console.log('✅ Connected to MySQL database without SSL');
-                    console.log(config);
-                    conn.release();
-                })
-                .catch(err => {
-                    console.error('❌ Failed to connect to MySQL database without SSL:', err.message);
-                });
-            
+            console.error(`❌ Connection failed to ${config.host}:`, err.message);
+            if (config.ssl) {
+                console.log('🔄 Retrying without SSL...');
+                const noSslConfig = { ...config, ssl: undefined };
+                const noSslPool = mysql.createPool(noSslConfig);
+                noSslPool.getConnection()
+                    .then(conn => {
+                        console.log('✅ Connected without SSL');
+                        conn.release();
+                        pool = noSslPool;
+                    })
+                    .catch(e => console.error('❌ Final connection attempt failed:', e.message));
+            }
         });
 
     return pool;

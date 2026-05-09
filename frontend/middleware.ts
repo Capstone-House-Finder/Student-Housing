@@ -16,11 +16,11 @@ const authRoutes = ['/login', '/register'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
+
   // Check if user is authenticated via sessionStorage (client-side only)
   // Note: middleware runs on server, so we need to check cookies for httpOnly token
   // For sessionStorage, we'll do client-side check in layout
-  
+
   // Alternative: Check for httpOnly cookie (more secure)
   const token = request.cookies.get('authToken')?.value;
   const isAuthenticated = !!token;

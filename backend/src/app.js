@@ -54,6 +54,17 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+/** 
+ * const corsOptions = {
+    origin: process.env.FRONTEND_URL || '*',
+    optionsSuccessStatus: 200,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};
+*/
+
+// app.use(cors({ origin: "*" }));
 
 // Middleware
 app.use(express.json());

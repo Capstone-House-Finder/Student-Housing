@@ -57,13 +57,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      // Use sessionStorage exclusively for multi-tab support and session isolation
-      const savedToken = sessionStorage.getItem(TOKEN_KEY);
+      // Sync with cookies for Middleware support
+      const savedToken = sessionStorage.getItem(TOKEN_KEY) || Cookies.get('authToken');
       if (savedToken) {
+        if (!sessionStorage.getItem(TOKEN_KEY)) {
+          sessionStorage.setItem(TOKEN_KEY, savedToken);
+        }
         setToken(savedToken);
         const success = await fetchUser(savedToken);
         if (!success) {
           sessionStorage.removeItem(TOKEN_KEY);
+          Cookies.remove('authToken');
           setToken(null);
         }
       }
@@ -82,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(authToken);
       // Store in sessionStorage for independent tab sessions
       sessionStorage.setItem(TOKEN_KEY, authToken);
+      // Set cookie for Middleware support
+      Cookies.set('authToken', authToken, { expires: 7, sameSite: 'lax' });
       return { success: true };
     }
 
@@ -99,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       setToken(authToken);
       sessionStorage.setItem(TOKEN_KEY, authToken);
+      Cookies.set('authToken', authToken, { expires: 7, sameSite: 'lax' });
       return { success: true };
     }
 
@@ -112,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setToken(null);
     sessionStorage.removeItem(TOKEN_KEY);
+    Cookies.remove('authToken');
   };
 
   const updateUser = (data: Partial<User>) => {

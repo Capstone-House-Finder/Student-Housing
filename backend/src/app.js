@@ -29,11 +29,11 @@ const port = process.env.PORT || 5000;
 
 // Initialize database connection
 const pool = getDatabasePool();
-const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    'http://localhost:3000',
-    'http://localhost:5173'
-].filter(Boolean);
+// const allowedOrigins = [
+//     process.env.FRONTEND_URL,
+//     'http://localhost:3000',
+//     'http://localhost:5173'
+// ].filter(Boolean);
 
 // Cors configuration (allow frontend origin)
 const allowedOrigins = [

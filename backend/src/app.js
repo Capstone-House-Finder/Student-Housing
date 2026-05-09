@@ -31,14 +31,17 @@ const port = process.env.PORT || 5000;
 const pool = getDatabasePool();
 
 // Cors configuration (allow frontend origin)
-const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+/** 
+ * const corsOptions = {
+    origin: process.env.FRONTEND_URL || '*',
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 };
-app.use(cors(corsOptions));
+*/
+
+app.use(cors({ origin: "*" }));
 
 // Middleware
 app.use(express.json());

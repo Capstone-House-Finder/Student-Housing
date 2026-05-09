@@ -36,11 +36,17 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 // Cors configuration (allow frontend origin)
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:3000',
+    'http://localhost:5173'
+].filter(Boolean);
+
 const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-
+      
         if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
             callback(null, true);
         } else {
@@ -51,7 +57,10 @@ const corsOptions = {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 };
+
 app.use(cors(corsOptions));
+
+// app.use(cors({ origin: "*" }));
 
 // Middleware
 app.use(express.json());

@@ -41,7 +41,7 @@ interface Listing {
   property_type: string;
   bedrooms?: number;
   bathrooms?: number;
-  square_feet?: number;
+  square_meters?: number;
   landlord_id: number;
   landlord_email: string;
   status: string;
@@ -295,8 +295,8 @@ export default function ListingDetailPage() {
                 </div>
                 <div className="col-4">
                   <div className="text-center p-3 bg-light rounded">
-                    <div className="h5 mb-0">{listing.square_feet ?? '-'}</div>
-                    <small className="text-muted">Sq Ft</small>
+                    <div className="h5 mb-0">{listing.square_meters ?? '-'}</div>
+                    <small className="text-muted">m²</small>
                   </div>
                 </div>
               </div>

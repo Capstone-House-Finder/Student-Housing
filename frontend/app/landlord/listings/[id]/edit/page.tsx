@@ -29,7 +29,7 @@ interface Listing {
   property_type: string;
   bedrooms?: number;
   bathrooms?: number;
-  square_feet?: number;
+  square_meters?: number;
   status: string;
   amenities: Amenity[];
   photos: Photo[];
@@ -96,7 +96,7 @@ export default function EditListingPage() {
           property_type: data.property_type as ListingFormData['property_type'],
           bedrooms: data.bedrooms || undefined,
           bathrooms: data.bathrooms || undefined,
-          square_feet: data.square_feet || undefined,
+          square_meters: data.square_meters || undefined,
         });
       }
 
@@ -165,7 +165,7 @@ export default function EditListingPage() {
     formData.append('property_type', data.property_type);
     if (data.bedrooms) formData.append('bedrooms', data.bedrooms.toString());
     if (data.bathrooms) formData.append('bathrooms', data.bathrooms.toString());
-    if (data.square_feet) formData.append('square_feet', data.square_feet.toString());
+    if (data.square_meters) formData.append('square_meters', data.square_meters.toString());
 
     selectedAmenities.forEach((id) => {
       formData.append('amenities[]', id.toString());
@@ -364,15 +364,16 @@ export default function EditListingPage() {
                   </div>
 
                   <div className="col-md-4">
-                    <label htmlFor="squareFeet" className="form-label">Square Feet</label>
+                    <label htmlFor="squareMeters" className="form-label">Square Meters</label>
                     <input
                       type="number"
-                      id="squareFeet"
-                      className={`form-control ${errors.square_feet ? 'is-invalid' : ''}`}
-                      {...register('square_feet', { valueAsNumber: true })}
+                      id="squareMeters"
+                      className={`form-control ${errors.square_meters ? 'is-invalid' : ''}`}
+                      min="0"
+                      {...register('square_meters', { valueAsNumber: true })}
                     />
-                    {errors.square_feet && (
-                      <div className="invalid-feedback">{errors.square_feet.message}</div>
+                    {errors.square_meters && (
+                      <div className="invalid-feedback">{errors.square_meters.message}</div>
                     )}
                   </div>
                 </div>

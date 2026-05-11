@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { amenitiesApi, listingsApi } from '@/lib/api';
+import { amenitiesApi, listingsApi, uploadPhotos } from '@/lib/api';
 import { listingSchema, ListingFormData } from '@/lib/validations';
 
 interface Amenity {
@@ -28,6 +28,7 @@ export default function CreateListingPage() {
   const [photoPreview, setPhotoPreview] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [lastStepTimestamp, setLastStepTimestamp] = useState(0);
 
   const {
     register,
@@ -73,7 +74,7 @@ export default function CreateListingPage() {
     } else if (currentStep === 2) {
       fieldsToValidate = ['location', 'price'];
     } else if (currentStep === 3) {
-      fieldsToValidate = ['bedrooms', 'bathrooms', 'square_feet'];
+      fieldsToValidate = ['bedrooms', 'bathrooms', 'square_meters'];
     } else if (currentStep === 4) {
       if (photoFiles.length === 0) {
         setSubmitError('Please upload at least one photo');
@@ -85,6 +86,7 @@ export default function CreateListingPage() {
     const isValid = fieldsToValidate.length > 0 ? await trigger(fieldsToValidate) : true;
     if (isValid) {
       setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+      setLastStepTimestamp(Date.now());
       window.scrollTo(0, 0);
     }
   };
@@ -135,7 +137,19 @@ export default function CreateListingPage() {
     setPhotoPreview((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const onSubmit = async (data: ListingFormData) => {
+  const onSubmit = async () => {
+    // Form onSubmit (e.g. from Enter key) should only move to next step
+    if (currentStep < totalSteps) {
+      await nextStep();
+    }
+  };
+
+  const handlePublish = async (data: ListingFormData) => {
+    if (currentStep !== totalSteps) return;
+    
+    // Prevent accidental double-click from previous step
+    if (Date.now() - lastStepTimestamp < 500) return;
+
     if (!token) return;
     if (photoFiles.length === 0) {
       setSubmitError('Please upload at least one photo');
@@ -146,33 +160,37 @@ export default function CreateListingPage() {
     setIsSubmitting(true);
     setSubmitError('');
 
-    const formData = new FormData();
-    formData.append('title', data.title);
-    formData.append('description', data.description);
-    formData.append('price', data.price.toString());
-    formData.append('location', data.location);
-    formData.append('property_type', data.property_type);
-    if (data.bedrooms) formData.append('bedrooms', data.bedrooms.toString());
-    if (data.bathrooms) formData.append('bathrooms', data.bathrooms.toString());
-    if (data.square_feet) formData.append('square_feet', data.square_feet.toString());
+    try {
+      // 1. Create the listing with JSON data
+      const listingData = {
+        ...data,
+        amenities: selectedAmenities,
+      };
 
-    selectedAmenities.forEach((item) => {
-      formData.append('amenities[]', item.toString());
-    });
+      const result = await listingsApi.create(token, listingData);
 
-    photoFiles.forEach((file) => {
-      formData.append('photos', file);
-    });
-
-    const result = await listingsApi.create(token, formData);
-
-    if (result.success) {
-      router.push('/landlord/dashboard');
-    } else {
-      setSubmitError(result.error?.message || 'Failed to create listing');
+      if (result.success && result.data) {
+        const listingId = (result.data as any).id;
+        
+        // 2. Upload photos for the new listing
+        const photoResult = await uploadPhotos(listingId, photoFiles, token);
+        
+        if (photoResult.success) {
+          router.push('/landlord/dashboard');
+        } else {
+          setSubmitError(`Listing created, but photo upload failed: ${photoResult.error?.message || 'Unknown error'}. You can manage photos in the dashboard.`);
+          // Still success in a way, but with warning
+          setTimeout(() => router.push('/landlord/dashboard'), 3000);
+        }
+      } else {
+        setSubmitError(result.error?.message || 'Failed to create listing');
+      }
+    } catch (err) {
+      setSubmitError('An unexpected error occurred. Please try again.');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   if (authLoading) {
@@ -358,15 +376,15 @@ export default function CreateListingPage() {
                     </div>
 
                     <div className="col-md-4">
-                      <label htmlFor="squareFeet" className="form-label fw-bold">Sq. Feet</label>
+                      <label htmlFor="squareMeters" className="form-label fw-bold">Sq. Meters</label>
                       <input
                         type="number"
-                        id="squareFeet"
-                        className={`form-control form-control-lg ${errors.square_feet ? 'is-invalid' : ''}`}
-                        placeholder="e.g., 1200"
-                        {...register('square_feet', { valueAsNumber: true })}
+                        id="squareMeters"
+                        className={`form-control form-control-lg ${errors.square_meters ? 'is-invalid' : ''}`}
+                        placeholder="e.g., 100"
+                        {...register('square_meters', { valueAsNumber: true })}
                       />
-                      {errors.square_feet && <div className="invalid-feedback">{errors.square_feet.message}</div>}
+                      {errors.square_meters && <div className="invalid-feedback">{errors.square_meters.message}</div>}
                     </div>
 
                     <div className="col-12">
@@ -491,8 +509,8 @@ export default function CreateListingPage() {
                             </div>
                             <div className="col-4">
                               <div className="bg-light p-2 rounded text-center">
-                                <div className="fw-bold">{formData.square_feet || 0}</div>
-                                <div className="small text-muted">Sqft</div>
+                                <div className="fw-bold">{formData.square_meters || 0}</div>
+                                <div className="small text-muted">m²</div>
                               </div>
                             </div>
                           </div>
@@ -545,7 +563,12 @@ export default function CreateListingPage() {
                       Next Step
                     </button>
                   ) : (
-                    <button type="submit" className="btn btn-primary btn-lg px-5" disabled={isSubmitting}>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary btn-lg px-5" 
+                      disabled={isSubmitting}
+                      onClick={handleSubmit(handlePublish)}
+                    >
                       {isSubmitting ? 'Publishing...' : 'Finish & Publish'}
                     </button>
                   )}

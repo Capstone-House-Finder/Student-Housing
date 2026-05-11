@@ -41,7 +41,7 @@ describe('createListing', () => {
       property_type: 'apartment',
       bedrooms: 2,
       bathrooms: 1,
-      square_feet: 500
+      square_meters: 500
     }, {}, { id: 42 });
 
     // 1. Insert listing
@@ -61,7 +61,7 @@ describe('createListing', () => {
       property_type: 'house',
       bedrooms: 3,
       bathrooms: 2,
-      square_feet: 1000,
+      square_meters: 1000,
       amenities: ['WiFi', 'Parking'],
     }, {}, { id: 42 });
 

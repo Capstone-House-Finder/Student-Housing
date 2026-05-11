@@ -84,7 +84,7 @@ export const listingSchema = z.object({
   }),
   bedrooms: z.number().int().min(0).optional(),
   bathrooms: z.number().int().min(0).optional(),
-  square_feet: z.number().int().min(0).optional(),
+  square_meters: z.number().int().min(0).optional(),
   amenities: z.array(z.string()).max(20, 'Maximum 20 amenities allowed').optional(),
 });
 

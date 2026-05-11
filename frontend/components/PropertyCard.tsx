@@ -78,7 +78,7 @@ export default function PropertyCard({
           {property.location}
         </p>
         <div className="d-flex justify-content-between align-items-center">
-          <span className="h5 text-primary mb-0">${property.price.toLocaleString()}/mo</span>
+          <span className="h5 text-primary mb-0">{property.price.toLocaleString()} FCFA/mo</span>
           <span className="badge bg-light text-dark">
             {property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)}
           </span>

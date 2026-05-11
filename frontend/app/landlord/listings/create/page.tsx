@@ -313,9 +313,9 @@ export default function CreateListingPage() {
                     </div>
 
                     <div className="col-md-6">
-                      <label htmlFor="price" className="form-label fw-bold">Monthly Rent ($) <span className="text-danger">*</span></label>
+                      <label htmlFor="price" className="form-label fw-bold">Monthly Rent (FCFA) <span className="text-danger">*</span></label>
                       <div className="input-group input-group-lg">
-                        <span className="input-group-text">$</span>
+                        <span className="input-group-text">FCFA</span>
                         <input
                           type="number"
                           id="price"
@@ -470,7 +470,7 @@ export default function CreateListingPage() {
                           </div>
                           <div className="d-flex align-items-center">
                             <i className="bi bi-cash text-primary me-2"></i>
-                            <span className="fw-bold">${formData.price?.toLocaleString()} / month</span>
+                            <span className="fw-bold">{formData.price?.toLocaleString()} FCFA / month</span>
                           </div>
                         </div>
 

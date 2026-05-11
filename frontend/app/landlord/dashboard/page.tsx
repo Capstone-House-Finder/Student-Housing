@@ -434,7 +434,7 @@ export default function LandlordDashboardPage() {
                             </div>
                           </div>
                         </td>
-                        <td>${listing.price.toLocaleString()}/mo</td>
+                        <td>{listing.price.toLocaleString()} FCFA/mo</td>
                         <td>{listing.location}</td>
                         <td>
                           <span className={`badge ${getStatusBadgeClass(listing.status)}`}>

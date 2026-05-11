@@ -50,9 +50,9 @@ export default function PropertyCard({
     return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  const defaultImage = 'https://via.placeholder.com/400x300?text=No+Image';
-  const imageUrl = property.photos && property.photos.length > 0 
-    ? property.photos[0].url 
+  const defaultImage = 'https://placehold.co/400x300?text=No+Image';
+  const imageUrl = property.photos && property.photos.length > 0
+    ? property.photos[0].url
     : defaultImage;
 
   const CardContent = () => (
@@ -73,12 +73,12 @@ export default function PropertyCard({
         <h5 className="card-title text-truncate">{property.title}</h5>
         <p className="card-text text-muted mb-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="me-1" viewBox="0 0 16 16">
-            <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
+            <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" />
           </svg>
           {property.location}
         </p>
         <div className="d-flex justify-content-between align-items-center">
-          <span className="h5 text-primary mb-0">${property.price.toLocaleString()}/mo</span>
+          <span className="h5 text-primary mb-0">{property.price.toLocaleString()} FCFA/mo</span>
           <span className="badge bg-light text-dark">
             {property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)}
           </span>
@@ -88,7 +88,7 @@ export default function PropertyCard({
             {property.bedrooms !== undefined && (
               <span className="me-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" className="me-1" viewBox="0 0 16 16">
-                  <path d="M2 13.5V2a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v11.5a.5.5 0 0 1-.5.5H14v1h-1v-1H3v1H2v-1h-.5a.5.5 0 0 1-.5-.5zM1 2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12a1 1 0 0 1-1 1v1h-1v-1H3v1H2v-1a1 1 0 0 1-1-1V2z"/>
+                  <path d="M2 13.5V2a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v11.5a.5.5 0 0 1-.5.5H14v1h-1v-1H3v1H2v-1h-.5a.5.5 0 0 1-.5-.5zM1 2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v12a1 1 0 0 1-1 1v1h-1v-1H3v1H2v-1a1 1 0 0 1-1-1V2z" />
                 </svg>
                 {property.bedrooms} bed
               </span>
@@ -96,7 +96,7 @@ export default function PropertyCard({
             {property.bathrooms !== undefined && (
               <span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" className="me-1" viewBox="0 0 16 16">
-                  <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z"/>
+                  <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z" />
                 </svg>
                 {property.bathrooms} bath
               </span>

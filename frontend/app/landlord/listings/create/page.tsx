@@ -28,6 +28,7 @@ export default function CreateListingPage() {
   const [photoPreview, setPhotoPreview] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [lastStepTimestamp, setLastStepTimestamp] = useState(0);
 
   const {
     register,
@@ -85,6 +86,7 @@ export default function CreateListingPage() {
     const isValid = fieldsToValidate.length > 0 ? await trigger(fieldsToValidate) : true;
     if (isValid) {
       setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+      setLastStepTimestamp(Date.now());
       window.scrollTo(0, 0);
     }
   };
@@ -135,11 +137,18 @@ export default function CreateListingPage() {
     setPhotoPreview((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const onSubmit = async (data: ListingFormData) => {
+  const onSubmit = async () => {
+    // Form onSubmit (e.g. from Enter key) should only move to next step
     if (currentStep < totalSteps) {
       await nextStep();
-      return;
     }
+  };
+
+  const handlePublish = async (data: ListingFormData) => {
+    if (currentStep !== totalSteps) return;
+    
+    // Prevent accidental double-click from previous step
+    if (Date.now() - lastStepTimestamp < 500) return;
 
     if (!token) return;
     if (photoFiles.length === 0) {
@@ -554,7 +563,12 @@ export default function CreateListingPage() {
                       Next Step
                     </button>
                   ) : (
-                    <button type="submit" className="btn btn-primary btn-lg px-5" disabled={isSubmitting}>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary btn-lg px-5" 
+                      disabled={isSubmitting}
+                      onClick={handleSubmit(handlePublish)}
+                    >
                       {isSubmitting ? 'Publishing...' : 'Finish & Publish'}
                     </button>
                   )}

@@ -13,73 +13,95 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ─────────────────────────────────────────────────────────────
   # Resolve the target environment based on the branch name
+  # develop        → staging
+  # release/**     → uat
+  # main, hotfix/** → production
+  # ─────────────────────────────────────────────────────────────
   resolve-env:
+    name: Resolve target environment
     runs-on: ubuntu-latest
     outputs:
       env_name: ${{ steps.env-map.outputs.env_name }}
+      is_production: ${{ steps.env-map.outputs.is_production }}
     steps:
       - id: env-map
         run: |
           case "${GITHUB_REF_NAME}" in
-            develop)   echo "env_name=staging" >> $GITHUB_OUTPUT ;;
-            release/*) echo "env_name=uat" >> $GITHUB_OUTPUT ;;
-            main|hotfix/*) echo "env_name=production" >> $GITHUB_OUTPUT ;;
-            *)         echo "env_name=none" >> $GITHUB_OUTPUT ;;
+            develop)
+              echo "env_name=staging"    >> $GITHUB_OUTPUT
+              echo "is_production=false" >> $GITHUB_OUTPUT
+              ;;
+            release/*)
+              echo "env_name=uat"        >> $GITHUB_OUTPUT
+              echo "is_production=false" >> $GITHUB_OUTPUT
+              ;;
+            main|hotfix/*)
+              echo "env_name=production" >> $GITHUB_OUTPUT
+              echo "is_production=true"  >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "env_name=none"       >> $GITHUB_OUTPUT
+              echo "is_production=false" >> $GITHUB_OUTPUT
+              ;;
           esac
 
-
-  # Deploy Frontend
+  # ─────────────────────────────────────────────────────────────
+  # Deploy Frontend to Vercel
+  # ─────────────────────────────────────────────────────────────
   deploy-frontend:
-    name: Deploy Frontend
+    name: Deploy Frontend (${{ needs.resolve-env.outputs.env_name }})
     needs: resolve-env
     if: needs.resolve-env.outputs.env_name != 'none'
     runs-on: ubuntu-latest
     environment:
       name: ${{ needs.resolve-env.outputs.env_name }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: frontend-build-${{ github.sha }}
-          path: frontend-build/
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          envs: API_URL
-          script: |
-            cd /var/www/housefinder/frontend
-            git fetch --all
-            git checkout ${{ github.ref_name }}
-            docker compose -f docker-compose.yml -f docker-compose.${{ needs.resolve-env.outputs.env_name }}.yml up -d --build --remove-orphans
-            docker image prune -f
 
-  # Deploy Backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Frontend to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+          working-directory: ./frontend
+          # Only pass --prod for production and UAT environments
+          vercel-args: ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }}
+
+  # ─────────────────────────────────────────────────────────────
+  # Deploy Backend to Vercel + run Aiven DB migrations
+  # ─────────────────────────────────────────────────────────────
   deploy-backend:
-    name: Deploy Backend
+    name: Deploy Backend (${{ needs.resolve-env.outputs.env_name }})
     needs: resolve-env
     if: needs.resolve-env.outputs.env_name != 'none'
     runs-on: ubuntu-latest
     environment:
       name: ${{ needs.resolve-env.outputs.env_name }}
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          envs: DATABASE_URL,JWT_SECRET,CLOUDINARY_CLOUD_NAME,CLOUDINARY_API_KEY,CLOUDINARY_API_SECRET
-          script: |
-            cd /var/www/housefinder/backend
-            git fetch --all
-            git checkout ${{ github.ref_name }}
-            docker compose -f docker-compose.yml -f docker-compose.${{ needs.resolve-env.outputs.env_name }}.yml up -d --build --remove-orphans
-            docker compose exec backend npm run migrate:latest
 
-  # Notify Slack
+    steps:
+      - uses: actions/checkout@v4
+
+      # Database migrations are not automated yet — the project uses raw SQL
+      # schema (mysql/init/01_schema.sql) without a migration tool like Knex.
+      # Schema changes to Aiven must be applied manually for now.
+      # TODO: Add Knex or another migration tool when the project needs it.
+
+      - name: Deploy Backend to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+          working-directory: ./backend
+          vercel-args: ${{ needs.resolve-env.outputs.is_production == 'true' && '--prod' || '' }}
+
+  # ─────────────────────────────────────────────────────────────
+  # Notify Slack on completion (uncomment when webhook is ready)
+  # ─────────────────────────────────────────────────────────────
   # notify:
   #   name: Notify Slack
   #   needs: [deploy-frontend, deploy-backend]

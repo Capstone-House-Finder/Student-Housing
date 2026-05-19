@@ -25,7 +25,7 @@ import { notFound } from './middleware/notFound.js';
 import { getDatabasePool } from './config/database.js';
 
 const app = express();
-const port = process.env.PORT || 5000;
+// const port = process.env.PORT || 5000;
 
 // Initialize database connection
 const pool = getDatabasePool();
@@ -46,7 +46,7 @@ const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-      
+
         if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
             callback(null, true);
         } else {

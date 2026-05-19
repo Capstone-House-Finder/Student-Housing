@@ -27,7 +27,6 @@ interface Pagination {
 
 const PROPERTY_TYPES = ['apartment', 'house', 'room', 'condo', 'townhouse'];
 const STATUS_OPTIONS = ['available', 'under_negotiation', 'rented'];
-const AMENITIES = ['WiFi', 'Parking', 'Gym', 'Pool', 'Laundry', 'Kitchen', 'Air Conditioning', 'Heating'];
 
 function SearchContent() {
   const router = useRouter();
@@ -285,11 +284,10 @@ function SearchContent() {
                       <button
                         key={amenity}
                         type="button"
-                        className={`btn btn-sm ${
-                          selectedAmenities.includes(amenity)
+                        className={`btn btn-sm ${selectedAmenities.includes(amenity)
                             ? 'btn-primary'
                             : 'btn-outline-secondary'
-                        }`}
+                          }`}
                         onClick={() => handleAmenityToggle(amenity)}
                       >
                         {amenity}
@@ -342,7 +340,7 @@ function SearchContent() {
             <div className="text-center py-5">
               <div className="empty-state">
                 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" className="empty-state-icon mb-3" viewBox="0 0 16 16">
-                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
                 </svg>
                 <h4>No Results Found</h4>
                 <p className="text-muted">

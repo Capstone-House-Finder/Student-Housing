@@ -39,22 +39,28 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: backend/package-lock.json
+
       - name: Install dependencies
         run: npm ci
+
       - name: Run ESLint
         run: npm run lint
+
       - name: Run TypeScript type-check
         run: npm run type-check
 
   test:
     name: Unit and integration tests
     runs-on: ubuntu-latest
+
+    # Spin up a local MySQL container — never use Aiven DB in CI
     services:
       mysql:
         image: mysql:8.0
@@ -66,52 +72,62 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -u root -prootpassword"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -prootpassword"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+
     defaults:
       run:
         working-directory: backend
+
     env:
       NODE_ENV: test
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Point to the local service container, not Aiven
+      DATABASE_URL: mysql://appuser:apppassword@127.0.0.1:3306/student_housing_test
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: backend/package-lock.json
+
       - name: Install dependencies
         run: npm ci
-      - name: Grant CREATE USER privilege
+
+      # Create the app user and grant privileges via root before applying schema
+      - name: Configure database user and privileges
         run: |
-          mysql -h 127.0.0.1 -u root -prootpassword student_housing_test \
-            -e "GRANT CREATE USER ON *.* TO 'appuser'@'%' IDENTIFIED BY 'apppassword'; FLUSH PRIVILEGES;"
-      - name: Apply database schema
-        run: |
-          # Create the app user separately — IDENTIFIED BY syntax was removed in MySQL 8.0
           mysql -h 127.0.0.1 -u root -prootpassword -e "
             CREATE USER IF NOT EXISTS 'appuser'@'%' IDENTIFIED BY 'apppassword';
             GRANT ALL PRIVILEGES ON student_housing_test.* TO 'appuser'@'%';
             FLUSH PRIVILEGES;
           "
 
-          # Apply the schema using the app user
+      - name: Apply database schema
+        run: |
           mysql -h 127.0.0.1 -u appuser -papppassword student_housing_test \
             < ../mysql/init/01_schema.sql
+
       - name: Run Jest with coverage
         run: npm run test -- --ci --coverage
+
       - name: Upload coverage artifact
-        if: ${{ github.ref_name == 'develop' || github.ref_name == 'main' || startsWith(github.ref_name, 'release/') || startsWith(github.ref_name, 'hotfix/') }}
+        if: >
+          github.ref_name == 'develop' ||
+          github.ref_name == 'main' ||
+          startsWith(github.ref_name, 'release/') ||
+          startsWith(github.ref_name, 'hotfix/')
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage-${{ github.sha }}
-          path: coverage/
+          path: backend/coverage/
           retention-days: 7

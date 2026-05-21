@@ -14,6 +14,18 @@ const protectedRoutes = [
 // Routes that redirect to dashboard if already authenticated
 const authRoutes = ['/login', '/register'];
 
+// Helper to decode JWT token in Edge Runtime
+function getRoleFromToken(token: string): string | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.role || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -25,9 +37,28 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('authToken')?.value;
   const isAuthenticated = !!token;
 
+  // Redirect /dashboard to the role-specific dashboard if authenticated
+  if (pathname === '/dashboard') {
+    if (isAuthenticated && token) {
+      const role = getRoleFromToken(token);
+      const dashboardPath = role === 'admin'
+        ? '/admin/dashboard'
+        : role === 'landlord'
+          ? '/landlord/dashboard'
+          : '/student/dashboard';
+      return NextResponse.redirect(new URL(dashboardPath, request.url));
+    }
+  }
+
   // Redirect authenticated users away from login/register pages
-  if (authRoutes.some(route => pathname.startsWith(route)) && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  if (authRoutes.some(route => pathname.startsWith(route)) && isAuthenticated && token) {
+    const role = getRoleFromToken(token);
+    const dashboardPath = role === 'admin'
+      ? '/admin/dashboard'
+      : role === 'landlord'
+        ? '/landlord/dashboard'
+        : '/student/dashboard';
+    return NextResponse.redirect(new URL(dashboardPath, request.url));
   }
 
   // Protect routes that require authentication

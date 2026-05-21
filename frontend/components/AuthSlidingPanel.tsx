@@ -69,7 +69,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const password = watch('password', '');
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !showSuccess) {
       const dashboardPath = user.role === 'admin'
         ? '/admin/dashboard'
         : user.role === 'landlord'
@@ -77,7 +77,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
           : '/student/dashboard';
       router.push(dashboardPath);
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, showSuccess]);
 
   if (isAuthenticated && user) {
     return null;
@@ -155,7 +155,12 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
     if (result.success) {
       setShowSuccess(true);
       setTimeout(() => {
-        router.push('/');
+        const dashboardPath = data.role === 'admin'
+          ? '/admin/dashboard'
+          : data.role === 'landlord'
+            ? '/landlord/dashboard'
+            : '/student/dashboard';
+        router.push(dashboardPath);
       }, 2000);
     } else if (result.error?.includes('duplicate') || result.error?.includes('already')) {
       setRegisterError('This email is already registered. Please try logging in instead.');

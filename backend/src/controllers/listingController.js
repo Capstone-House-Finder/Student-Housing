@@ -114,6 +114,33 @@ export async function getListing(req, res, next) {
         );
         listing.photos = photoRows;
 
+        // Fetch linked reviews with student details
+        const [reviewRows] = await pool.query(
+            `SELECT r.id, r.rating, r.comment, r.created_at, u.email as student_email
+             FROM reviews r
+             JOIN users u ON r.student_id = u.id
+             WHERE r.listing_id = ?
+             ORDER BY r.created_at DESC`,
+            [id]
+        );
+
+        // Fetch landlord replies for each review
+        for (const review of reviewRows) {
+            const [replyRows] = await pool.query(
+                `SELECT id, reply as text, created_at 
+                 FROM review_replies 
+                 WHERE review_id = ? 
+                 LIMIT 1`,
+                [review.id]
+            );
+            if (replyRows.length > 0) {
+                review.reply = replyRows[0];
+            } else {
+                review.reply = null;
+            }
+        }
+        listing.reviews = reviewRows;
+
         res.status(200).json({ success: true, data: listing });
     } catch (err) {
         next(err);

@@ -11,8 +11,7 @@
       "Bash(git commit -m ' *)",
       "Bash(gh pr *)",
       "Bash(git checkout *)",
-      "Bash(git push *)",
-      "PowerShell(npm test *)"
+      "Bash(git push *)"
     ]
   }
 }

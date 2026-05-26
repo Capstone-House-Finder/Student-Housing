@@ -124,20 +124,23 @@ export async function getListing(req, res, next) {
             [id]
         );
 
-        // Fetch landlord replies for each review
-        for (const review of reviewRows) {
+        // Fetch landlord replies for all reviews in a single query
+        const reviewIds = reviewRows.map(r => r.id);
+        let replyMap = {};
+        if (reviewIds.length > 0) {
             const [replyRows] = await pool.query(
-                `SELECT id, reply as text, created_at 
-                 FROM review_replies 
-                 WHERE review_id = ? 
-                 LIMIT 1`,
-                [review.id]
+                `SELECT id, reply as text, created_at, review_id
+                 FROM review_replies
+                 WHERE review_id IN (?)`,
+                [reviewIds]
             );
-            if (replyRows.length > 0) {
-                review.reply = replyRows[0];
-            } else {
-                review.reply = null;
-            }
+            replyMap = replyRows.reduce((acc, row) => {
+                acc[row.review_id] = row;
+                return acc;
+            }, {});
+        }
+        for (const review of reviewRows) {
+            review.reply = replyMap[review.id] || null;
         }
         listing.reviews = reviewRows;
 

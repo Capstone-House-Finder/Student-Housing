@@ -11,7 +11,15 @@
       "Bash(git commit -m ' *)",
       "Bash(gh pr *)",
       "Bash(git checkout *)",
-      "Bash(git push *)"
+      "Bash(git push origin HEAD:refs/heads/hotfix/75-fixing-redirect-after-login-and-registration)",
+      "PowerShell(npm test *)",
+      "Bash(prefers-color-scheme)",
+      "Bash(next-themes)",
+      "Bash(gh repo *)",
+      "Bash(dir *)",
+      "Bash(gh auth *)",
+      "Bash(git commit *)",
+      "Bash(git status *)"
     ]
   }
 }

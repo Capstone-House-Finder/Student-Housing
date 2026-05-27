@@ -96,7 +96,7 @@ describe('createListing', () => {
       property_type: 'apartment',
       bedrooms: 1,
       bathrooms: 1,
-      square_feet: 100
+      square_meters: 100
     }, {}, null);
     await listingController.createListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
@@ -115,10 +115,11 @@ describe('getListing', () => {
     mockQuery.mockResolvedValueOnce([[fakeRow]]);
     mockQuery.mockResolvedValueOnce([[]]); // amenities
     mockQuery.mockResolvedValueOnce([[]]); // photos
+    mockQuery.mockResolvedValueOnce([[]]); // reviews
 
     await listingController.getListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: { ...fakeRow, amenities: [], photos: [] } });
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { ...fakeRow, amenities: [], photos: [], reviews: [] } });
   });
 
   it('returns 404 when not found', async () => {

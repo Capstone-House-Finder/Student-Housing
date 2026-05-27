@@ -114,6 +114,36 @@ export async function getListing(req, res, next) {
         );
         listing.photos = photoRows;
 
+        // Fetch linked reviews with student details
+        const [reviewRows] = await pool.query(
+            `SELECT r.id, r.rating, r.comment, r.created_at, u.email as student_email
+             FROM reviews r
+             JOIN users u ON r.student_id = u.id
+             WHERE r.listing_id = ?
+             ORDER BY r.created_at DESC`,
+            [id]
+        );
+
+        // Fetch landlord replies for all reviews in a single query
+        const reviewIds = reviewRows.map(r => r.id);
+        let replyMap = {};
+        if (reviewIds.length > 0) {
+            const [replyRows] = await pool.query(
+                `SELECT id, reply as text, created_at, review_id
+                 FROM review_replies
+                 WHERE review_id IN (?)`,
+                [reviewIds]
+            );
+            replyMap = replyRows.reduce((acc, row) => {
+                acc[row.review_id] = row;
+                return acc;
+            }, {});
+        }
+        for (const review of reviewRows) {
+            review.reply = replyMap[review.id] || null;
+        }
+        listing.reviews = reviewRows;
+
         res.status(200).json({ success: true, data: listing });
     } catch (err) {
         next(err);

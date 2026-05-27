@@ -19,7 +19,8 @@
       "Bash(dir *)",
       "Bash(gh auth *)",
       "Bash(git commit *)",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "PowerShell(npm install *)"
     ]
   }
 }

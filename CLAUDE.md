@@ -33,7 +33,7 @@ A full-stack Student Housing Platform connecting students with landlords.
 
 ## Detailed Project Structure
 
-``` text
+```text
 project-root/
 ├── .github/                      # GitHub Actions workflows and validation scripts
 │   ├── workflows/                # CI/CD workflow definitions

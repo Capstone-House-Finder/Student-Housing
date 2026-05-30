@@ -21,3 +21,5 @@ build/
 backend/uploads/
 .cline/
 docs/
+.secrets
+.github/validate_workflows.py

@@ -10,9 +10,16 @@ on:
 jobs:
   tag-release:
     runs-on: ubuntu-latest
-    if: ${{ github.event.pull_request.merged && (startsWith(github.event.pull_request.head.ref, 'release/') || startsWith(github.event.pull_request.head.ref, 'hotfix/')) }}
+    # Only run when a release/* or hotfix/* branch is merged into main
+    if: >
+      github.event.pull_request.merged == true &&
+      (
+        startsWith(github.event.pull_request.head.ref, 'release/') ||
+        startsWith(github.event.pull_request.head.ref, 'hotfix/')
+      )
     permissions:
       contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,7 +27,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Determine version
+      - name: Determine version from branch name
         id: version
         run: |
           BRANCH="${{ github.event.pull_request.head.ref }}"
@@ -29,7 +36,7 @@ jobs:
           elif [[ "$BRANCH" == hotfix/* ]]; then
             VERSION="${BRANCH#hotfix/}"
           else
-            echo "Unsupported branch prefix"
+            echo "Unsupported branch prefix: $BRANCH"
             exit 1
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -51,4 +58,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
+          name: Release v${{ steps.version.outputs.VERSION }}
           generate_release_notes: true

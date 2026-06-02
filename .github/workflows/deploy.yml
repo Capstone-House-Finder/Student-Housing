@@ -30,23 +30,6 @@ jobs:
         run: |
           case "${GITHUB_REF_NAME}" in
             develop)
-<<<<<<< Updated upstream
-              echo "env_name=staging"    >> $GITHUB_OUTPUT
-              echo "is_production=false" >> $GITHUB_OUTPUT
-              ;;
-            release/*)
-              echo "env_name=uat"        >> $GITHUB_OUTPUT
-              echo "is_production=false" >> $GITHUB_OUTPUT
-              ;;
-            main|hotfix/*)
-              echo "env_name=production" >> $GITHUB_OUTPUT
-              echo "is_production=true"  >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "env_name=none"       >> $GITHUB_OUTPUT
-              echo "is_production=false" >> $GITHUB_OUTPUT
-              ;;
-=======
               echo "env_name=staging" >> $GITHUB_OUTPUT
               echo "is_production=false" >> $GITHUB_OUTPUT ;;
             release/*)
@@ -58,12 +41,10 @@ jobs:
             *)
               echo "env_name=none" >> $GITHUB_OUTPUT
               echo "is_production=false" >> $GITHUB_OUTPUT ;;
->>>>>>> Stashed changes
           esac
 
-  # ─────────────────────────────────────────────────────────────
-  # Deploy Frontend to Vercel
-  # ─────────────────────────────────────────────────────────────
+
+  # Deploy Frontend
   deploy-frontend:
     name: Deploy Frontend (${{ needs.resolve-env.outputs.env_name }})
     needs: resolve-env

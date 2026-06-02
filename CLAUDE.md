@@ -4,41 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-<<<<<<< Updated upstream
-A full‑stack house‑rental platform:
-- **Frontend** – Next.js 16 application where landlords create and manage listings.
-- **Backend** – Express.js API handling listings, user authentication (JWT), and file uploads.
-- **Database** – MySQL (Aiven) storing users, listings, amenities, and photos.
-=======
 A full‑stack Student Housing platform connecting students with landlords.
 - **Frontend**: Next.js 16 (App Router) with React 19 and Bootstrap 5.
 - **Backend**: Express 5 REST API.
 - **Database**: MySQL (Aiven) accessed via `mysql2/promise`.
 - **Auth**: JWT stored in HTTP‑only cookies, role‑based access (Student, Landlord, Admin).
->>>>>>> Stashed changes
 
 ## High‑Level Architecture
 
 ### Backend (`backend/`)
-<<<<<<< Updated upstream
-- **Entry point** – `src/app.js` loads environment variables, creates the DB pool (`src/config/database.js`), registers routes, and starts the HTTP server.
-- **Routes** – `src/Routes/` groups REST endpoints (e.g., `userRoutes.js`, `listingRoutes.js`).
-- **Controllers** – `src/controllers/` contain the business logic for each resource (user registration/login, listing CRUD, amenities, photos).
-- **Middleware** – `src/middleware/` provides JWT authentication (`auth.js`), error handling, and 404 handling.
-- **Config** – `src/config/database.js` builds a MySQL connection pool with SSL support and sensible timeouts.
-- **Tests** – Jest unit tests live beside each controller (`*.test.js`). Tests mock the DB pool and external libs to run offline.
-
-### Frontend (`frontend/`)
-- **Entry point** – `src/app/page.tsx` (Next.js app root).
-- **Pages** – `/landlord/listings/create/` implements a multi‑step wizard (Details → Amenities → Photos → Review).
-- **State** – Custom hook `useCreateListing` orchestrates form state and API calls.
-- **Styling** – CSS modules + inline styles.
-- **Testing** – Jest + React Testing Library (`npm test`).
-
-## Development Workflow
-
-### Backend
-=======
 - **Entry point**: `src/app.js` – loads env vars, creates a MySQL pool, registers routes, starts the HTTP server.
 - **Database**: `src/config/database.js` – connection pool with SSL.
 - **Routes**: `src/Routes/` – groups endpoint definitions (e.g., `userRoutes.js`, `listingRoutes.js`).
@@ -58,7 +32,6 @@ A full‑stack Student Housing platform connecting students with landlords.
 ## Common Development Commands
 
 ### Backend (`cd backend`)
->>>>>>> Stashed changes
 ```bash
 # Install dependencies (once)
 npm install
@@ -124,18 +97,10 @@ npm run test   # defined in root package.json if present; otherwise run manually
 - Frontend tests use React Testing Library; they run in a Node environment and do not require a live API.
 - Ensure the server is not running while executing Jest tests to avoid port conflicts.
 
-<<<<<<< Updated upstream
-## Important Files
-- `backend/src/config/database.js` – Connection pool with SSL cert (`certs/ca.pem`) and timeouts.
-- `backend/src/controllers/userController.js` – Registration, login, profile endpoints.
-- `backend/src/Routes/userRoutes.js` – Public `/register` and `/login` routes; protected `/me` routes.
-- `frontend/src/app/landlord/listings/create/` – Multi‑step listing creation UI.
-=======
 ## CI/CD Highlights
 - GitHub Actions workflows live under `.github/workflows/` (backend‑ci.yml, frontend‑ci.yml, deploy.yml, etc.).
 - All CI jobs use Node 20; lint, type‑check, and test steps mirror the local scripts above.
 - Dockerfiles (`backend/Dockerfile`, `frontend/Dockerfile`) build container images for deployment.
->>>>>>> Stashed changes
 
 ---
 *Generated with Claude Code*

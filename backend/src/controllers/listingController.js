@@ -5,6 +5,7 @@
  */
 
 import { pool } from '../app.js';
+import { sendNotification } from './pushController.js';
 
 // Helper to validate required fields for create/update
 function validateListingPayload(payload) {
@@ -71,9 +72,24 @@ export async function createListing(req, res, next) {
                 });
                 await pool.query(
                     'INSERT INTO listing_photos (listing_id, url, public_id) VALUES (?, ?, ?)',
-                    [listingId, uploadResult.secure_url, uploadResult.public_id]
-                );
+                    [listingId, uploadResult.secure_url, uploadResult.public_id])
             }
+        }
+
+        // Notify students about the new listing
+        try {
+            const queryResult = await pool.query("SELECT id FROM users WHERE role = 'student'");
+            const students = Array.isArray(queryResult) ? queryResult[0] : [];
+            for (const student of students) {
+                sendNotification(
+                    student.id,
+                    'New Listing Available',
+                    `A new property "${title}" in "${location}" has just been listed!`,
+                    { listingId: String(listingId) }
+                ).catch(err => console.error('Failed to send push notification to student:', err));
+            }
+        } catch (err) {
+            console.error('Failed to process push notifications for new listing:', err);
         }
 
         res.status(201).json({ success: true, data: { id: listingId } });

@@ -4,14 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+<<<<<<< Updated upstream
 A full‑stack house‑rental platform:
 - **Frontend** – Next.js 16 application where landlords create and manage listings.
 - **Backend** – Express.js API handling listings, user authentication (JWT), and file uploads.
 - **Database** – MySQL (Aiven) storing users, listings, amenities, and photos.
+=======
+A full‑stack Student Housing platform connecting students with landlords.
+- **Frontend**: Next.js 16 (App Router) with React 19 and Bootstrap 5.
+- **Backend**: Express 5 REST API.
+- **Database**: MySQL (Aiven) accessed via `mysql2/promise`.
+- **Auth**: JWT stored in HTTP‑only cookies, role‑based access (Student, Landlord, Admin).
+>>>>>>> Stashed changes
 
 ## High‑Level Architecture
 
 ### Backend (`backend/`)
+<<<<<<< Updated upstream
 - **Entry point** – `src/app.js` loads environment variables, creates the DB pool (`src/config/database.js`), registers routes, and starts the HTTP server.
 - **Routes** – `src/Routes/` groups REST endpoints (e.g., `userRoutes.js`, `listingRoutes.js`).
 - **Controllers** – `src/controllers/` contain the business logic for each resource (user registration/login, listing CRUD, amenities, photos).
@@ -29,14 +38,35 @@ A full‑stack house‑rental platform:
 ## Development Workflow
 
 ### Backend
-```bash
-# Install deps (run once)
-cd backend && npm install
+=======
+- **Entry point**: `src/app.js` – loads env vars, creates a MySQL pool, registers routes, starts the HTTP server.
+- **Database**: `src/config/database.js` – connection pool with SSL.
+- **Routes**: `src/Routes/` – groups endpoint definitions (e.g., `userRoutes.js`, `listingRoutes.js`).
+- **Controllers**: `src/controllers/` – business logic for each resource.
+- **Middleware**: `src/middleware/` – JWT auth (`auth.js`), error handling, 404 handling.
+- **Tests**: Jest tests live alongside controllers (`*.test.js`). They mock the DB pool and run offline.
 
-# Start dev server with auto‑reload
+### Frontend (`frontend/`)
+- **Framework** – Next.js 16 App Router.
+- **Entry point**: `src/app/page.tsx` – root layout.
+- **Auth state** – `contexts/AuthContext.tsx` provides user info and JWT handling.
+- **Form validation** – `react-hook-form` + `zod` schemas (`lib/validations.ts`).
+- **UI components** – Bootstrap 5 utility classes + custom React components under `components/ui/`.
+- **API client** – `lib/api.ts` wraps `fetch` for all backend calls.
+- **Testing** – Jest + React Testing Library (`npm test`).
+
+## Common Development Commands
+
+### Backend (`cd backend`)
+>>>>>>> Stashed changes
+```bash
+# Install dependencies (once)
+npm install
+
+# Start development server with auto‑reload
 npm run dev
 
-# Run all tests
+# Run the full test suite
 npm test
 
 # Run a single test file (e.g., auth controller)
@@ -44,45 +74,68 @@ npm test -- src/controllers/auth.test.js
 
 # Run tests in watch mode (re‑run on changes)
 npm test -- --watch
+
+# Lint the code
+npm run lint
 ```
 
-### Frontend
+### Frontend (`cd frontend`)
 ```bash
-# Install deps (run once)
-cd frontend && npm install
+# Install dependencies (once)
+npm install
 
-# Start dev server (Next.js)
+# Start the Next.js dev server
 npm run dev
 
 # Build for production
 npm run build
 
-# Lint the code
+# Lint the code (ESLint)
 npm run lint
 
-# Run all tests
+# Run the full test suite (Jest)
 npm test
 
-# Run a single test (Jest)
+# Run a single test (provide the path to the test file)
 npm test -- path/to/test.file.tsx
 ```
 
-### Common Commands
-- **`npm run dev`** – Starts the appropriate dev server (backend or frontend, depending on the current folder).
-- **`npm run lint`** – Executes ESLint (frontend) or `eslint` (backend) based on the project scripts.
-- **`npm run test`** – Runs Jest; use `--` to pass Jest flags (e.g., `--watch`).
-- **Environment** – Backend reads a `.env` file at the repository root (`backend/.env` is not used). Required vars: `DATABASE_URL`, `JWT_SECRET`, `PORT`, etc.
+### Root‑level Convenience Commands
+```bash
+# Run backend or frontend dev server from the repo root (choose folder first)
+(cd backend && npm run dev)   # start backend
+(cd frontend && npm run dev)  # start frontend
+
+# Run all tests (both backend and frontend)
+npm run test   # defined in root package.json if present; otherwise run manually per sub‑project
+```
+
+## Important Files & Entry Points
+- `backend/src/app.js` – server bootstrap.
+- `backend/src/config/database.js` – DB pool configuration.
+- `backend/src/middleware/auth.js` – JWT verification and RBAC.
+- `frontend/src/app/page.tsx` – Next.js root page.
+- `frontend/lib/api.ts` – central API client.
+- `frontend/lib/validations.ts` – Zod schemas for form validation.
+- `frontend/middleware.ts` – server‑side route protection.
 
 ## Testing Guidance
-- Tests mock the DB pool via `jest.unstable_mockModule('../config/database.js', ...)` and use `jest.spyOn` for `bcrypt`/`jwt`.
-- All controller tests are self‑contained; they do **not** require a live MySQL instance.
-- Ensure the backend server is not running while running tests to avoid port conflicts.
+- Backend tests mock the DB pool via `jest.unstable_mockModule('../config/database.js', ...)` and use `jest.spyOn` for `bcrypt`/`jwt`.
+- Frontend tests use React Testing Library; they run in a Node environment and do not require a live API.
+- Ensure the server is not running while executing Jest tests to avoid port conflicts.
 
+<<<<<<< Updated upstream
 ## Important Files
 - `backend/src/config/database.js` – Connection pool with SSL cert (`certs/ca.pem`) and timeouts.
 - `backend/src/controllers/userController.js` – Registration, login, profile endpoints.
 - `backend/src/Routes/userRoutes.js` – Public `/register` and `/login` routes; protected `/me` routes.
 - `frontend/src/app/landlord/listings/create/` – Multi‑step listing creation UI.
+=======
+## CI/CD Highlights
+- GitHub Actions workflows live under `.github/workflows/` (backend‑ci.yml, frontend‑ci.yml, deploy.yml, etc.).
+- All CI jobs use Node 20; lint, type‑check, and test steps mirror the local scripts above.
+- Dockerfiles (`backend/Dockerfile`, `frontend/Dockerfile`) build container images for deployment.
+>>>>>>> Stashed changes
 
 ---
 *Generated with Claude Code*

@@ -45,6 +45,22 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: 'Password is required' }),
 });
 
+function createAccessToken(user) {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+
+function createRefreshToken(user) {
+  return jwt.sign(
+    { id: user.id, role: user.role, type: 'refresh' },
+    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
 // ── Registration ────────────────────────────────────────────────────────
 
 export async function register(req, res, next) {
@@ -98,11 +114,8 @@ export async function register(req, res, next) {
     }
 
     // 5. Generate JWT with payload { id, role }
-    const token = jwt.sign(
-      { id: userId, role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = createAccessToken({ id: userId, role });
+    const refreshToken = createRefreshToken({ id: userId, role });
 
     // 6. Return 201 with JWT
     res.status(201).json({
@@ -114,6 +127,7 @@ export async function register(req, res, next) {
           role,
         },
         token,
+        refreshToken,
       },
     });
   } catch (err) {
@@ -166,11 +180,8 @@ export async function login(req, res, next) {
     }
 
     // 4. Generate JWT
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = createAccessToken(user);
+    const refreshToken = createRefreshToken(user);
 
     // 5. Return 200 with JWT
     res.status(200).json({
@@ -182,9 +193,49 @@ export async function login(req, res, next) {
           role: user.role,
         },
         token,
+        refreshToken,
       },
     });
   } catch (err) {
+    next(err);
+  }
+}
+
+export async function refresh(req, res, next) {
+  const pool = getPoolInstance();
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, error: { message: 'Refresh token is required' } });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ success: false, error: { message: 'Invalid refresh token' } });
+    }
+
+    const [users] = await pool.query(
+      'SELECT id, email, role FROM users WHERE id = ? AND status = ? LIMIT 1',
+      [decoded.id, 'active']
+    );
+    if (!users || users.length === 0) {
+      return res.status(401).json({ success: false, error: { message: 'User not found or inactive' } });
+    }
+
+    const user = users[0];
+    res.status(200).json({
+      success: true,
+      data: {
+        user,
+        token: createAccessToken(user),
+        accessToken: createAccessToken(user),
+        refreshToken: createRefreshToken(user),
+      },
+    });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, error: { message: 'Invalid or expired refresh token' } });
+    }
     next(err);
   }
 }

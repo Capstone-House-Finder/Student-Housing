@@ -1,7 +1,5 @@
-<<<<<<< Updated upstream
 import { z } from 'zod';
 
-// Password must have: 8+ chars, uppercase, lowercase, number, special char
 const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
@@ -115,6 +113,3 @@ export type ListingFormData = z.infer<typeof listingSchema>;
 export type ReviewFormData = z.infer<typeof reviewSchema>;
 export type ReportFormData = z.infer<typeof reportSchema>;
 export type ProfileFormData = z.infer<typeof profileSchema>;
-=======
-export * from '@housing/shared';
->>>>>>> Stashed changes

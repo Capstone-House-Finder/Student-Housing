@@ -21,5 +21,9 @@ build/
 backend/uploads/
 .cline/
 docs/
+<<<<<<< Updated upstream
 .secrets
 .github/validate_workflows.py
+=======
+mocks/
+>>>>>>> Stashed changes

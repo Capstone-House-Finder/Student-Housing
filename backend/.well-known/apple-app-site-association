@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "REPLACE_ME_TEAM_ID.com.studenthousing.app",
+        "paths": ["/listing/*", "/landlord/*", "/admin/*"]
+      }
+    ]
+  }
+}

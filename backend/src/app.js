@@ -18,6 +18,7 @@ import reportRoutes from './Routes/reportRoutes.js';
 import reviewRoutes from './Routes/reviewRoutes.js';
 import amenityRoutes from './Routes/amenityRoutes.js';
 import contactRoutes from './Routes/contactRoutes.js';
+import pushRoutes from './Routes/pushRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 import { notFound } from './middleware/notFound.js';
@@ -39,7 +40,8 @@ const pool = getDatabasePool();
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:3000',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'exp://localhost:8081',
 ].filter(Boolean);
 
 const corsOptions = {
@@ -65,6 +67,7 @@ app.use(cors(corsOptions));
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/.well-known', express.static(path.join(projectRoot, 'backend', '.well-known')));
 
 // Request logging
 app.use((req, res, next) => {
@@ -121,6 +124,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/amenities', amenityRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/push', pushRoutes);
 
 
 // 404 handler

@@ -6,6 +6,7 @@
  */
 
 import { pool } from '../app.js';
+import { sendNotification } from './pushController.js';
 
 /**
  * POST /api/listings/:id/reviews
@@ -78,7 +79,7 @@ export async function replyReview(req, res, next) {
 
     // Fetch the review to determine the associated listing and its landlord
     const [reviewRows] = await pool.query(
-      'SELECT listing_id FROM reviews WHERE id = ? LIMIT 1',
+      'SELECT student_id, listing_id FROM reviews WHERE id = ? LIMIT 1',
       [reviewId]
     );
     if (!reviewRows.length) {
@@ -119,6 +120,20 @@ export async function replyReview(req, res, next) {
       [reviewId, landlord.id, reply]
     );
     const replyId = result.insertId;
+
+    // Notify the student about the reply
+    try {
+      const studentId = reviewRows[0].student_id;
+      sendNotification(
+        studentId,
+        'Landlord Replied to Your Review',
+        'A landlord has replied to your review on their listing.',
+        { listingId: String(listingId) }
+      ).catch(err => console.error('Failed to send reply push notification to student:', err));
+    } catch (err) {
+      console.error('Failed to send reply push notification:', err);
+    }
+
     return res.status(201).json({ success: true, data: { id: replyId } });
   } catch (err) {
     next(err);

@@ -50,6 +50,16 @@ CREATE TABLE token_blocklist (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE push_tokens (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT NOT NULL,
+  token       VARCHAR(255) NOT NULL UNIQUE,
+  platform    ENUM('ios', 'android') NOT NULL,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- ── LISTINGS GROUP ───────────────────────────────────────────
 
 CREATE TABLE listings (

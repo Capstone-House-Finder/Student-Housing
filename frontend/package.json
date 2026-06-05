@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test": "jest",
     "type-check": "tsc --noEmit"
->>>>>>> Stashed changes
+
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

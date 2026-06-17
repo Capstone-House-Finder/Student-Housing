@@ -1,10 +1,7 @@
-import Constants from 'expo-constants';
-
-const debuggerHrost = Constants.expoConfig?.hostUri?.split(':')[0] || 'localhost';
-let API_BASE_URL = `http://${debuggerHrost}:5000`;
+let API_BASE_URL = 'http://localhost:5000';
 
 export function configureApi(baseUrl?: string) {
-  API_BASE_URL = baseUrl || `http://${debuggerHrost}:5000`;
+  API_BASE_URL = (baseUrl || 'http://localhost:5000').replace(/\/$/, '');
 }
 
 export interface ApiResponse<T = unknown> {
@@ -34,7 +31,7 @@ export async function apiRequest<T = unknown>(
   const config: RequestInit = {
     method,
     headers: {
-      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+      ...(body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     },
     credentials: 'include',
@@ -53,7 +50,8 @@ export async function apiRequest<T = unknown>(
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
 
     if (!response.ok) {
       return {

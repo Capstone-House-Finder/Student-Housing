@@ -128,5 +128,5 @@ jobs:
           # only applies to run steps, not artifact upload paths
           path: |
             frontend/.next/
-            frontend/public/
+            public/
           retention-days: 1

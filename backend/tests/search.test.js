@@ -32,7 +32,7 @@ describe('Search and Filter API', () => {
         property_type: 'apartment',
         bedrooms: 2,
         bathrooms: 1,
-        square_feet: 800,
+        square_meters: 800,
       })
       .expect(201);
     const listingId = createRes.body.data.id;

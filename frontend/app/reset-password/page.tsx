@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { resetPasswordSchema, ResetPasswordFormData } from '@/lib/validations';
 
@@ -14,6 +15,8 @@ function ResetPasswordForm() {
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const token = searchParams.get('token');
   const email = searchParams.get('email');
@@ -123,13 +126,23 @@ function ResetPasswordForm() {
                     <label htmlFor="newPassword" className="form-label">
                       New Password
                     </label>
-                    <input
-                      type="password"
-                      id="newPassword"
-                      className={`form-control ${errors.newPassword ? 'is-invalid' : ''}`}
-                      placeholder="Enter new password"
-                      {...register('newPassword')}
-                    />
+                    <div className="input-group">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        id="newPassword"
+                        className={`form-control ${errors.newPassword ? 'is-invalid' : ''}`}
+                        placeholder="Enter new password"
+                        {...register('newPassword')}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                     {errors.newPassword && (
                       <div className="invalid-feedback">{errors.newPassword.message}</div>
                     )}
@@ -142,13 +155,23 @@ function ResetPasswordForm() {
                     <label htmlFor="confirmPassword" className="form-label">
                       Confirm New Password
                     </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
-                      placeholder="Confirm new password"
-                      {...register('confirmPassword')}
-                    />
+                    <div className="input-group">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        id="confirmPassword"
+                        className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
+                        placeholder="Confirm new password"
+                        {...register('confirmPassword')}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                     {errors.confirmPassword && (
                       <div className="invalid-feedback">{errors.confirmPassword.message}</div>
                     )}

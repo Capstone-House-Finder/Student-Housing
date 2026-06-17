@@ -78,12 +78,12 @@ export const listingSchema = z.object({
   description: z.string().min(10, 'Description must be at least 10 characters'),
   price: z.number().positive('Price must be greater than 0'),
   location: z.string().min(1, 'Location is required').max(255, 'Location must be less than 255 characters'),
-  property_type: z.enum(['apartment', 'house', 'room', 'condo', 'townhouse'], {
+  property_type: z.enum(['apartment', 'studio', 'room', 'house'], {
     errorMap: () => ({ message: 'Please select a property type' }),
   }),
   bedrooms: z.number().int().min(0).optional(),
   bathrooms: z.number().int().min(0).optional(),
-  square_feet: z.number().int().min(0).optional(),
+  square_meters: z.number().int().min(0).optional(),
   amenities: z.array(z.string()).max(20, 'Maximum 20 amenities allowed').optional(),
 });
 

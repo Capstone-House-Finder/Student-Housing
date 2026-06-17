@@ -52,7 +52,8 @@ export async function contactListing(req, res, next) {
     const message = `Title: Listing Inquiry\nFrom: ${studentEmail}\n\nGreetings.\n\tI am ${studentFullName}, and I am interested by your property ${listingTitle} located at ${listingLocation}. I would really appreciate if we could discuss about it via this channel.`;
 
     if (landlordPhone) {
-      const base = `https://wa.me/${landlordPhone}`;
+      const cleanPhone = landlordPhone.replace(/\D/g, '');
+      const base = `https://wa.me/${cleanPhone}`;
       const url = new URL(base);
       url.search = new URLSearchParams({ text: message }).toString();
       whatsappUrl = url.toString();

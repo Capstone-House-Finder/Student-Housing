@@ -65,7 +65,15 @@ app.use(cors(corsOptions));
 // app.use(cors({ origin: "*" }));
 
 // Middleware
-app.use(express.json());
+app.use((req, res, next) => {
+    express.json()(req, res, (err) => {
+        if (err) {
+            // If JSON parsing fails, set req.body to empty object and continue
+            req.body = {};
+        }
+        next();
+    });
+});
 app.use(express.urlencoded({ extended: true }));
 app.use('/.well-known', express.static(path.join(projectRoot, 'backend', '.well-known')));
 

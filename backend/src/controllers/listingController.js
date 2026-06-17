@@ -9,7 +9,7 @@ import { sendNotification } from './pushController.js';
 
 // Helper to validate required fields for create/update
 function validateListingPayload(payload) {
-    const required = ['title', 'description', 'location', 'price', 'property_type', 'bedrooms', 'bathrooms', 'square_feet'];
+    const required = ['title', 'description', 'location', 'price', 'property_type', 'bedrooms', 'bathrooms'];
     const missing = required.filter((f) => !(f in payload));
     return missing;
 }
@@ -20,7 +20,7 @@ export async function createListing(req, res, next) {
         if (missing.length) {
             return res.status(400).json({ success: false, error: { message: `Missing fields: ${missing.join(', ')}` } });
         }
-        const { title, description, location, price, property_type, bedrooms, bathrooms, square_feet } = req.body;
+        const { title, description, location, price, property_type, bedrooms, bathrooms, square_meters } = req.body;
         // Amenities can be sent as 'amenities' or 'amenities[]'
         let amenities = req.body.amenities || req.body['amenities[]'] || [];
         if (!Array.isArray(amenities)) {
@@ -33,8 +33,8 @@ export async function createListing(req, res, next) {
         }
 
         const [result] = await pool.query(
-            'INSERT INTO listings (title, description, location, price, property_type, bedrooms, bathrooms, square_feet, landlord_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [title, description, location, price, property_type, bedrooms || null, bathrooms || null, square_feet || null, landlord_id]
+            'INSERT INTO listings (title, description, location, price, property_type, bedrooms, bathrooms, square_meters, landlord_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [title, description, location, price, property_type, bedrooms || null, bathrooms || null, square_meters || null, landlord_id]
         );
 
         const listingId = result.insertId;
@@ -76,6 +76,17 @@ export async function createListing(req, res, next) {
             }
         }
 
+        // Handle photos sent as URLs (for mobile app after Cloudinary upload)
+        if (req.body.photos && Array.isArray(req.body.photos)) {
+            for (const photo of req.body.photos) {
+                if (photo.url) {
+                    await pool.query(
+                        'INSERT INTO listing_photos (listing_id, url, public_id) VALUES (?, ?, ?)',
+                        [listingId, photo.url, photo.public_id || null])
+                }
+            }
+        }
+
         // Notify students about the new listing
         try {
             const queryResult = await pool.query("SELECT id FROM users WHERE role = 'student'");
@@ -102,17 +113,24 @@ export async function createListing(req, res, next) {
 export async function getListing(req, res, next) {
     try {
         const { id } = req.params;
+        const requesterId = req.user?.id;
         const [rows] = await pool.query(
-            `SELECT l.*, u.email as landlord_email 
+            `SELECT l.*, u.email as landlord_email, up.full_name as landlord_name, up.phone as landlord_phone 
              FROM listings l 
              JOIN users u ON l.landlord_id = u.id 
-             WHERE l.id = ? AND l.deleted_at IS NULL AND l.flagged = false`,
-            [id]
+             LEFT JOIN user_profiles up ON l.landlord_id = up.user_id
+             WHERE l.id = ? AND l.deleted_at IS NULL AND (l.flagged = false OR l.landlord_id = ?)`,
+            [id, requesterId ?? null]
         );
         if (!rows.length) {
             return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
         }
         const listing = rows[0];
+        listing.landlord = {
+            email: listing.landlord_email,
+            full_name: listing.landlord_name,
+            phone: listing.landlord_phone
+        };
         // Fetch linked amenities
         const [amenRows] = await pool.query(
             `SELECT a.id, a.name FROM amenities a
@@ -150,7 +168,7 @@ export async function updateListing(req, res, next) {
         // Allow partial updates for listing fields
         const fields = [];
         const values = [];
-        const allowed = ['title', 'description', 'location', 'price', 'property_type'];
+        const allowed = ['title', 'description', 'location', 'price', 'property_type', 'bedrooms', 'bathrooms', 'square_meters'];
         for (const key of allowed) {
             if (key in req.body) {
                 fields.push(`${key} = ?`);
@@ -165,6 +183,21 @@ export async function updateListing(req, res, next) {
             values.push(id);
             await pool.query(`UPDATE listings SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`, values);
         }
+
+        // Handle photos sent as URLs (for mobile app after Cloudinary upload)
+        if (req.body.photos && Array.isArray(req.body.photos)) {
+            // Remove existing photos
+            await pool.query('DELETE FROM listing_photos WHERE listing_id = ?', [id]);
+            // Add new photos
+            for (const photo of req.body.photos) {
+                if (photo.url) {
+                    await pool.query(
+                        'INSERT INTO listing_photos (listing_id, url, public_id) VALUES (?, ?, ?)',
+                        [id, photo.url, photo.public_id || null])
+                }
+            }
+        }
+
         // Update amenities if provided
         if (Array.isArray(amenities)) {
             // Remove existing links

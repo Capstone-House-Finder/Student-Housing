@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
-import { authApi } from '@/lib/api';
+import { API } from '@/lib/api';
 import { resetPasswordSchema, ResetPasswordFormData } from '@/lib/validations';
 
 export function ResetPasswordForm() {
@@ -40,7 +40,7 @@ export function ResetPasswordForm() {
     setIsSubmitting(true);
     setServerError('');
 
-    const result = await authApi.resetPassword({
+    const result = await API.post('/auth/reset-password', {
       token,
       password: data.newPassword,
     });

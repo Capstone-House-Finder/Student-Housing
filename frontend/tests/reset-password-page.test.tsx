@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResetPasswordForm } from '@/app/reset-password/page';
-import { authApi } from '@/lib/api';
+import { API } from '@/lib/api';
 
 const pushMock = jest.fn();
 let searchParamString = 'token=valid-token';
@@ -13,8 +13,8 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('@/lib/api', () => ({
-  authApi: {
-    resetPassword: jest.fn(),
+  API: {
+    post: jest.fn(),
   },
 }));
 
@@ -23,8 +23,8 @@ describe('ResetPasswordForm', () => {
     searchParamString = 'token=valid-token';
     pushMock.mockClear();
     jest.useFakeTimers();
-    jest.mocked(authApi.resetPassword).mockReset();
-    jest.mocked(authApi.resetPassword).mockResolvedValue({
+    jest.mocked(API.post).mockReset();
+    jest.mocked(API.post).mockResolvedValue({
       success: true,
       message: 'Password has been reset.',
     });
@@ -49,7 +49,7 @@ describe('ResetPasswordForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset Password' }));
 
     await waitFor(() => {
-      expect(authApi.resetPassword).toHaveBeenCalledWith({
+      expect(API.post).toHaveBeenCalledWith('/auth/reset-password', {
         token: 'valid-token',
         password: 'NewPass123!',
       });
@@ -70,6 +70,6 @@ describe('ResetPasswordForm', () => {
 
     expect(screen.getByText('Invalid or missing reset link. Please request a new password reset.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Request Password Reset' })).toHaveAttribute('href', '/forgot-password');
-    expect(authApi.resetPassword).not.toHaveBeenCalled();
+    expect(API.post).not.toHaveBeenCalled();
   });
 });

@@ -20,7 +20,7 @@ export interface Listing {
   property_type: string;
   bedrooms?: number;
   bathrooms?: number;
-  square_feet?: number;
+  square_meters?: number;
   landlord_id?: number;
   landlord_email?: string;
   status?: ListingStatus;

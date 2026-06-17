@@ -31,7 +31,7 @@ export async function apiRequest<T = unknown>(
   const config: RequestInit = {
     method,
     headers: {
-      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
+      ...(body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     },
     credentials: 'include',

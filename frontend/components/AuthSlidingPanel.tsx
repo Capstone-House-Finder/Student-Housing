@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 import {
   loginSchema,
   LoginFormData,
@@ -32,6 +33,9 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const [showSuccess, setShowSuccess] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
   const [profileData, setProfileData] = useState<RegisterProfileFormData | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register: registerLoginField,
@@ -197,13 +201,23 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
 
               <div className="mb-3">
                 <label htmlFor="loginPassword" className="form-label">Password</label>
-                <input
-                  type="password"
-                  id="loginPassword"
-                  className={`form-control ${loginErrors.password ? 'is-invalid' : ''}`}
-                  placeholder="Enter your password"
-                  {...registerLoginField('password')}
-                />
+                <div className="input-group">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    id="loginPassword"
+                    className={`form-control ${loginErrors.password ? 'is-invalid' : ''}`}
+                    placeholder="Enter your password"
+                    {...registerLoginField('password')}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    tabIndex={-1}
+                  >
+                    {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 {loginErrors.password && (
                   <div className="invalid-feedback">{loginErrors.password.message}</div>
                 )}
@@ -328,13 +342,23 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
 
                     <div className="mb-3">
                       <label htmlFor="registerPassword" className="form-label">Password</label>
-                      <input
-                        type="password"
-                        id="registerPassword"
-                        className={`form-control ${accountErrors.password ? 'is-invalid' : ''}`}
-                        placeholder="Create a password"
-                        {...registerAccountField('password')}
-                      />
+                      <div className="input-group">
+                        <input
+                          type={showRegisterPassword ? 'text' : 'password'}
+                          id="registerPassword"
+                          className={`form-control ${accountErrors.password ? 'is-invalid' : ''}`}
+                          placeholder="Create a password"
+                          {...registerAccountField('password')}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                          tabIndex={-1}
+                        >
+                          {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                       {accountErrors.password && (
                         <div className="invalid-feedback">{accountErrors.password.message}</div>
                       )}
@@ -355,13 +379,23 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
 
                     <div className="mb-3">
                       <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-                      <input
-                        type="password"
-                        id="confirmPassword"
-                        className={`form-control ${accountErrors.confirmPassword ? 'is-invalid' : ''}`}
-                        placeholder="Confirm your password"
-                        {...registerAccountField('confirmPassword')}
-                      />
+                      <div className="input-group">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          id="confirmPassword"
+                          className={`form-control ${accountErrors.confirmPassword ? 'is-invalid' : ''}`}
+                          placeholder="Confirm your password"
+                          {...registerAccountField('confirmPassword')}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                       {accountErrors.confirmPassword && (
                         <div className="invalid-feedback">{accountErrors.confirmPassword.message}</div>
                       )}

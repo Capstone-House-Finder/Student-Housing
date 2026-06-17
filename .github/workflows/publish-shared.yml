@@ -1,7 +1,13 @@
 name: Publish Shared Package
 on:
   push:
-    branches: [main]
+    branches: 
+      - main
+      - develop 
+      - "hotfix/**" 
+      - "release/**" 
+      - "feature/**"
+      - "bugfix/**"
     paths: ['packages/shared/**']
 jobs:
   publish:

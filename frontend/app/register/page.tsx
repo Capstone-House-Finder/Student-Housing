@@ -1,5 +1,10 @@
+import { Suspense } from 'react';
 import AuthSlidingPanel from '@/components/AuthSlidingPanel';
 
 export default function RegisterPage() {
-  return <AuthSlidingPanel initialMode="signup" />;
+  return (
+    <Suspense fallback={null}>
+      <AuthSlidingPanel initialMode="signup" />
+    </Suspense>
+  );
 }

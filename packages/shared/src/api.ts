@@ -134,7 +134,7 @@ export const authApi = {
   forgotPassword: (email: string) =>
     apiRequest('/api/auth/forgot-password', { method: 'POST', body: { email } }),
 
-  resetPassword: (data: { email: string; resetToken: string; newPassword: string }) =>
+  resetPassword: (data: { token: string; password: string }) =>
     apiRequest('/api/auth/reset-password', { method: 'POST', body: data }),
 
   changePassword: (token: string, data: { currentPassword: string; newPassword: string }) =>

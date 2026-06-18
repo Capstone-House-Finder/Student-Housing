@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,9 +24,11 @@ interface AuthSlidingPanelProps {
 
 export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSlidingPanelProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, register: registerUser, isAuthenticated, user } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loginError, setLoginError] = useState('');
+  const [loginMessage, setLoginMessage] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
@@ -73,6 +75,13 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const password = watch('password', '');
 
   useEffect(() => {
+    if (searchParams.get('reset') === 'success') {
+      setMode('signin');
+      setLoginMessage('Your password has been reset successfully. Please log in with your new password.');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (isAuthenticated && user) {
       const dashboardPath = user.role === 'admin'
         ? '/admin/dashboard'
@@ -104,6 +113,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const showSignIn = () => {
     setMode('signin');
     setLoginError('');
+    setLoginMessage('');
     router.replace('/login', { scroll: false });
   };
 
@@ -122,6 +132,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const onLoginSubmit = async (data: LoginFormData) => {
     setIsLoginSubmitting(true);
     setLoginError('');
+    setLoginMessage('');
 
     const result = await login(data.email, data.password);
 
@@ -181,6 +192,12 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
             {loginError && (
               <div className="alert alert-danger" role="alert">
                 {loginError}
+              </div>
+            )}
+
+            {loginMessage && (
+              <div className="alert alert-success" role="alert">
+                {loginMessage}
               </div>
             )}
 

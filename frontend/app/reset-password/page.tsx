@@ -6,10 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
-import { authApi } from '@/lib/api';
+import { API } from '@/lib/api';
 import { resetPasswordSchema, ResetPasswordFormData } from '@/lib/validations';
 
-function ResetPasswordForm() {
+export function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [serverError, setServerError] = useState('');
@@ -19,7 +19,6 @@ function ResetPasswordForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const token = searchParams.get('token');
-  const email = searchParams.get('email');
 
   const {
     register,
@@ -30,27 +29,26 @@ function ResetPasswordForm() {
   });
 
   useEffect(() => {
-    if (!token || !email) {
+    if (!token) {
       setServerError('Invalid or missing reset link. Please request a new password reset.');
     }
-  }, [token, email]);
+  }, [token]);
 
   const onSubmit = async (data: ResetPasswordFormData) => {
-    if (!token || !email) return;
+    if (!token) return;
 
     setIsSubmitting(true);
     setServerError('');
 
-    const result = await authApi.resetPassword({
-      email,
-      resetToken: token,
-      newPassword: data.newPassword,
+    const result = await API.post('/auth/reset-password', {
+      token,
+      password: data.newPassword,
     });
 
     if (result.success) {
       setShowSuccess(true);
       setTimeout(() => {
-        router.push('/login');
+        router.push('/login?reset=success');
       }, 3000);
     } else {
       if (result.error?.message?.includes('expired')) {
@@ -114,7 +112,7 @@ function ResetPasswordForm() {
                 </div>
               )}
 
-              {(!token || !email) ? (
+              {!token ? (
                 <div className="text-center">
                   <Link href="/forgot-password" className="btn btn-primary">
                     Request Password Reset

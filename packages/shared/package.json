@@ -1,6 +1,11 @@
 {
   "name": "@housing/shared",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Capstone-House-Finder/Student-Housing.git",
+    "directory": "packages/shared"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

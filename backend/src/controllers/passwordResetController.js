@@ -129,3 +129,55 @@ export async function resetPassword(req, res, next) {
     next(err);
   }
 }
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, { message: 'Current password is required' }),
+  newPassword: z.string()
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .regex(/[A-Z]/, { message: 'Password must contain an uppercase letter' })
+    .regex(/[a-z]/, { message: 'Password must contain a lowercase letter' })
+    .regex(/[0-9]/, { message: 'Password must contain a number' })
+    .regex(/[^a-zA-Z0-9]/, { message: 'Password must contain a special character' }),
+});
+
+export async function changePassword(req, res, next) {
+  const pool = getPool();
+  try {
+    const validation = changePasswordSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid input', details: validation.error.flatten().fieldErrors },
+      });
+    }
+    const { currentPassword, newPassword } = validation.data;
+    const userId = req.user.id;
+
+    const [rows] = await pool.query(
+      'SELECT email, password_hash, status FROM users WHERE id = ? LIMIT 1',
+      [userId]
+    );
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({ success: false, error: { message: 'User not found' } });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, error: { message: 'Incorrect current password' } });
+    }
+
+    const saltRounds = 12;
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    await pool.query(
+      'UPDATE users SET password_hash = ? WHERE id = ?',
+      [newPasswordHash, userId]
+    );
+
+    return res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+

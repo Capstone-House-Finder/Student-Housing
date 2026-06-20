@@ -1,5 +1,5 @@
 {
-  "name": "@housing/shared",
+  "name": "@capstone-house-finder/shf-api",
   "version": "1.0.0",
   "repository": {
     "type": "git",
@@ -13,8 +13,7 @@
     "dev": "tsc --watch"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://npm.pkg.github.com"
   },
   "dependencies": {
     "clsx": "^2.1.1",

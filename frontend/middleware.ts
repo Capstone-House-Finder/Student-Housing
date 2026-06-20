@@ -14,16 +14,29 @@ const protectedRoutes = [
 // Routes that redirect to dashboard if already authenticated
 const authRoutes = ['/login', '/register'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Check if user is authenticated via sessionStorage (client-side only)
-  // Note: middleware runs on server, so we need to check cookies for httpOnly token
-  // For sessionStorage, we'll do client-side check in layout
-
-  // Alternative: Check for httpOnly cookie (more secure)
+  // Authentication token from cookies
   const token = request.cookies.get('authToken')?.value;
   const isAuthenticated = !!token;
+  // After authentication check, verify email status
+  if (isAuthenticated) {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const meResponse = await fetch(`${apiBase}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const meData = await meResponse.json();
+      if (meData.success && meData.data && meData.data.user && meData.data.user.email_verified === false) {
+        // Allow access to verification pages
+        if (!pathname.startsWith('/verify-pending') && !pathname.startsWith('/verify-email')) {
+          return NextResponse.redirect(new URL('/verify-pending', request.url));
+        }
+      }
+    } catch (e) {
+      // ignore errors, proceed normally
+    }
+  }
 
   // Redirect authenticated users away from login/register pages
   if (authRoutes.some(route => pathname.startsWith(route)) && isAuthenticated) {

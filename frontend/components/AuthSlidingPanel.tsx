@@ -140,6 +140,8 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
       setTimeout(() => {
         router.refresh();
       }, 100);
+    } else if (result.code === 'EMAIL_UNVERIFIED') {
+      router.push(`/verify-pending?email=${encodeURIComponent(data.email)}`);
     } else if (result.error?.includes('credentials') || result.error?.includes('password')) {
       setLoginError('Invalid email or password. Please try again.');
     } else {
@@ -170,7 +172,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
     if (result.success) {
       setShowSuccess(true);
       setTimeout(() => {
-        router.push('/');
+        router.push(`/verify-pending?email=${encodeURIComponent(data.email)}`);
       }, 2000);
     } else if (result.error?.includes('duplicate') || result.error?.includes('already')) {
       setRegisterError('This email is already registered. Please try logging in instead.');

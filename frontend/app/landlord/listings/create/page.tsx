@@ -73,7 +73,7 @@ export default function CreateListingPage() {
     } else if (currentStep === 2) {
       fieldsToValidate = ['location', 'price'];
     } else if (currentStep === 3) {
-      fieldsToValidate = ['bedrooms', 'bathrooms', 'square_feet'];
+      fieldsToValidate = ['bedrooms', 'bathrooms', 'square_meters'];
     } else if (currentStep === 4) {
       if (photoFiles.length === 0) {
         setSubmitError('Please upload at least one photo');
@@ -154,7 +154,7 @@ export default function CreateListingPage() {
     formData.append('property_type', data.property_type);
     if (data.bedrooms) formData.append('bedrooms', data.bedrooms.toString());
     if (data.bathrooms) formData.append('bathrooms', data.bathrooms.toString());
-    if (data.square_feet) formData.append('square_feet', data.square_feet.toString());
+    if (data.square_meters) formData.append('square_meters', data.square_meters.toString());
 
     selectedAmenities.forEach((item) => {
       formData.append('amenities[]', item.toString());
@@ -362,11 +362,11 @@ export default function CreateListingPage() {
                       <input
                         type="number"
                         id="squareFeet"
-                        className={`form-control form-control-lg ${errors.square_feet ? 'is-invalid' : ''}`}
+                        className={`form-control form-control-lg ${errors.square_meters ? 'is-invalid' : ''}`}
                         placeholder="e.g., 1200"
-                        {...register('square_feet', { valueAsNumber: true })}
+                        {...register('square_meters', { valueAsNumber: true })}
                       />
-                      {errors.square_feet && <div className="invalid-feedback">{errors.square_feet.message}</div>}
+                      {errors.square_meters && <div className="invalid-feedback">{errors.square_meters.message}</div>}
                     </div>
 
                     <div className="col-12">
@@ -491,7 +491,7 @@ export default function CreateListingPage() {
                             </div>
                             <div className="col-4">
                               <div className="bg-light p-2 rounded text-center">
-                                <div className="fw-bold">{formData.square_feet || 0}</div>
+                                <div className="fw-bold">{formData.square_meters || 0}</div>
                                 <div className="small text-muted">Sqft</div>
                               </div>
                             </div>

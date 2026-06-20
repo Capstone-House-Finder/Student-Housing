@@ -30,7 +30,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   register: (data: RegisterInput) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateUser: (data: Partial<User>) => void;
@@ -94,18 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       success: false,
       error: response.error?.message || 'Login failed',
+      code: response.error?.code,
     };
   };
 
   const register = async (data: RegisterInput) => {
     const response = await authApi.register(data);
 
-    if (response.success && response.data) {
-      const { user: userData, token: authToken } = response.data as { user: User; token: string };
-      setUser(userData);
-      setToken(authToken);
-      sessionStorage.setItem(TOKEN_KEY, authToken);
-      Cookies.set('authToken', authToken, { expires: 7, sameSite: 'lax' });
+    if (response.success) {
       return { success: true };
     }
 

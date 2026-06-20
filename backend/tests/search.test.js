@@ -1,23 +1,34 @@
 // search.test.js – Search and filter test suite
 import request from 'supertest';
 import app from '../src/app.js';
+import { getDatabasePool } from '../src/config/database.js';
 
 /**
- * Helper to obtain an auth token for a landlord (used for authenticated search).
+ * Register a user, verify email via a known token, and return an auth JWT.
  */
 async function getAuthToken() {
   const email = `user_${Date.now()}@example.com`;
   const password = 'Password123!';
-  await request(app).post('/api/auth/register').send({ email, password, name: 'Test User' }).expect(201);
-  const loginRes = await request(app).post('/api/auth/login').send({ email, password }).expect(200);
-  return loginRes.body.token;
+  await request(app)
+    .post('/api/auth/register')
+    .send({ email, password, role: 'landlord' })
+    .expect(201);
+
+  const pool = getDatabasePool();
+  await pool.query('UPDATE users SET email_verified = TRUE WHERE email = ?', [email]);
+
+  const loginRes = await request(app)
+    .post('/api/auth/login')
+    .send({ email, password })
+    .expect(200);
+  return loginRes.body.data.token;
 }
 
 describe('Search and Filter API', () => {
   let token = '';
   beforeAll(async () => {
     token = await getAuthToken();
-  });
+  }, 30000);
 
   test('Search with matching filters returns results', async () => {
     // First, create a listing to be searchable

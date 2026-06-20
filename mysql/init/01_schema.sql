@@ -17,6 +17,7 @@ CREATE TABLE users (
   password_hash   VARCHAR(255)  NOT NULL,
   role            ENUM('student','landlord','admin') NOT NULL,
   status          ENUM('active','suspended') NOT NULL DEFAULT 'active',
+  email_verified  BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -32,6 +33,16 @@ CREATE TABLE user_profiles (
 );
 
 CREATE TABLE password_resets (
+  id          INT           AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT           NOT NULL,
+  token_hash  VARCHAR(255)  NOT NULL UNIQUE,
+  expires_at  TIMESTAMP     NOT NULL,
+  used        BOOLEAN       NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE email_verifications (
   id          INT           AUTO_INCREMENT PRIMARY KEY,
   user_id     INT           NOT NULL,
   token_hash  VARCHAR(255)  NOT NULL UNIQUE,

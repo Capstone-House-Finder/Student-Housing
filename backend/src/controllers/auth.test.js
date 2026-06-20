@@ -4,10 +4,15 @@ process.env.JWT_SECRET = 'test-secret';
 
 // Mock query function
 const mockQueryFn = jest.fn();
+const mockSendEmail = jest.fn().mockResolvedValue({ success: true });
 
 // Use unstable_mockModule for ESM mocking
 jest.unstable_mockModule('../config/database.js', () => ({
   getDatabasePool: jest.fn(() => ({ query: mockQueryFn })),
+}));
+
+jest.unstable_mockModule('../config/email.js', () => ({
+  sendEmail: mockSendEmail,
 }));
 
 // Dynamic import after mocking
@@ -33,28 +38,41 @@ describe('BE-01: User Registration Endpoint', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockQueryFn.mockReset();
+    mockSendEmail.mockClear();
   });
 
-  it('should return 201 with JWT on success', async () => {
+  it('should return 201 with pending_verification status (no JWT)', async () => {
     const { req, res, next } = mockReqRes({
       email: 'test@example.com',
       password: 'StrongPass123!',
       role: 'student',
     });
 
-    // First call: duplicate check – no existing user
-    mockQueryFn.mockResolvedValueOnce([[]]);
-    // bcrypt.hash
+    mockQueryFn
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([{ insertId: 1 }])
+      .mockResolvedValueOnce([{}]);
+
     const hashSpy = jest.spyOn(bcrypt, 'hash').mockResolvedValueOnce('hashedPassword123');
-    // Second call: insert
-    mockQueryFn.mockResolvedValueOnce([{ insertId: 1 }]);
-    // jwt.sign
-    const signSpy = jest.spyOn(jwt, 'sign').mockReturnValueOnce('fake-jwt-token');
+    const signSpy = jest.spyOn(jwt, 'sign');
 
     await register(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(hashSpy).toHaveBeenCalledWith('StrongPass123!', 12);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: {
+        status: 'pending_verification',
+        user: {
+          id: 1,
+          email: 'test@example.com',
+          role: 'student',
+          email_verified: false,
+        },
+      },
+    });
+    expect(mockSendEmail).toHaveBeenCalled();
+    expect(signSpy).not.toHaveBeenCalled();
     hashSpy.mockRestore();
     signSpy.mockRestore();
   });
@@ -115,7 +133,7 @@ describe('BE-02: User Login Endpoint', () => {
     });
 
     mockQueryFn.mockResolvedValueOnce([[
-      { id: 1, email: 'test@example.com', password_hash: 'hashed', role: 'student' }
+      { id: 1, email: 'test@example.com', password_hash: 'hashed', role: 'student', email_verified: true }
     ]]);
     const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(true);
     const signSpy = jest.spyOn(jwt, 'sign').mockReturnValueOnce('login-token');
@@ -125,6 +143,26 @@ describe('BE-02: User Login Endpoint', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     compareSpy.mockRestore();
     signSpy.mockRestore();
+  });
+
+  it('should return 403 EMAIL_UNVERIFIED for unverified accounts', async () => {
+    const { req, res, next } = mockReqRes({
+      email: 'unverified@example.com',
+      password: 'TestPass123!',
+    });
+
+    mockQueryFn.mockResolvedValueOnce([[
+      { id: 1, email: 'unverified@example.com', password_hash: 'hashed', role: 'student', email_verified: false }
+    ]]);
+    jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(true);
+
+    await login(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: expect.objectContaining({ code: 'EMAIL_UNVERIFIED' }),
+    });
   });
 
   it('should return 401 for non-existent email', async () => {

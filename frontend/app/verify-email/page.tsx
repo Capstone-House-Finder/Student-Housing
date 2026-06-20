@@ -15,26 +15,42 @@ export default function VerifyEmailPage() {
   const [resendMsg, setResendMsg] = useState('');
   const [resendSuccess, setResendSuccess] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [dashboardRoute, setDashboardRoute] = useState('/dashboard');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const verifiedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent running multiple times after redirect
+    if (verifiedRef.current) return;
+
     const token = new URLSearchParams(window.location.search).get('token');
     if (!token) {
       setStatus('error');
       setErrorMsg('No verification token found in the link.');
       return;
     }
+    verifiedRef.current = true;
     authApi.verifyEmail(token)
       .then((res: ApiResponse) => {
         if (res.success) {
           setStatus('success');
           // Automatically log the user in using the returned token
-          const tokenData = res.data as { token?: string } | undefined;
-          if (tokenData && tokenData.token) {
-            Cookies.set('authToken', tokenData.token, { expires: 7, sameSite: 'lax' });
-            sessionStorage.setItem('auth_token', tokenData.token);
+          const data = res.data as { token?: string; user?: { role?: string } } | undefined;
+          if (data && data.token) {
+            Cookies.set('authToken', data.token, { expires: 7, sameSite: 'lax' });
+            sessionStorage.setItem('auth_token', data.token);
           }
-          setTimeout(() => router.push('/dashboard'), 3000);
+
+          // Map role to dashboard route
+          const roleToDashboard: Record<string, string> = {
+            admin: '/admin/dashboard',
+            landlord: '/landlord/dashboard',
+            student: '/student/dashboard',
+          };
+          const route = data?.user?.role ? roleToDashboard[data.user.role] : '/dashboard';
+          setDashboardRoute(route);
+
+          setTimeout(() => router.push(route), 3000);
         } else {
           setStatus('error');
           const msg = res.error?.message ?? 'Verification failed.';
@@ -266,7 +282,7 @@ export default function VerifyEmailPage() {
                 Your email address has been confirmed. Redirecting you to your dashboard in a moment…
               </p>
               <div className="vep-success-bar" />
-              <button className="vep-btn vep-btn--primary" onClick={() => router.push('/dashboard')}>
+              <button className="vep-btn vep-btn--primary" onClick={() => router.push(dashboardRoute)}>
                 Go to Dashboard
               </button>
             </>

@@ -3,6 +3,7 @@
  * BE-01: Implement user registration endpoint
  */
 
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
@@ -78,7 +79,8 @@ export async function register(req, res, next) {
       });
     }
 
-    const { email, password, role } = validationResult.data;
+    const { email: rawEmail, password, role } = validationResult.data;
+    const email = rawEmail.trim().toLowerCase();
 
     // 2. Check for duplicate email
     const queryResult = await pool.query(
@@ -113,21 +115,46 @@ export async function register(req, res, next) {
       );
     }
 
-    // 5. Generate JWT with payload { id, role }
-    const token = createAccessToken({ id: userId, role });
-    const refreshToken = createRefreshToken({ id: userId, role });
+    // 5. Generate unique token, set expiry, and store hashed token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await pool.query(
+      'INSERT INTO email_verifications (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+      [userId, tokenHash, expiresAt]
+    );
 
-    // 6. Return 201 with JWT
+    // 6. Send verification email
+    try {
+      const { sendEmail } = await import('../config/email.js');
+      const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${rawToken}`;
+      await sendEmail({
+        to: email,
+        subject: 'Verify Your Email Address',
+        text: `Welcome! Please verify your email by clicking: ${verifyLink}`,
+        html: `<div style="font-family: sans-serif; padding: 20px;">
+          <h2 style="color: #0d6efd;">Verify Your Email Address</h2>
+          <p>Thank you for registering with Student Housing!</p>
+          <p>Please click the button below to verify your email address. This link is valid for 24 hours.</p>
+          <a href="${verifyLink}" style="display: inline-block; padding: 10px 20px; background-color: #0d6efd; color: white; text-decoration: none; border-radius: 5px;">Verify Email</a>
+          <p style="margin-top: 20px; color: #666; font-size: 12px;">If you did not create this account, please ignore this email.</p>
+        </div>`
+      });
+    } catch (mailErr) {
+      console.error('Failed to send verification email:', mailErr);
+    }
+
+    // 7. Return 201 with status pending_verification
     res.status(201).json({
       success: true,
       data: {
+        status: 'pending_verification',
         user: {
           id: userId,
           email,
           role,
+          email_verified: false,
         },
-        token,
-        refreshToken,
       },
     });
   } catch (err) {
@@ -152,11 +179,12 @@ export async function login(req, res, next) {
       });
     }
 
-    const { email, password } = validationResult.data;
+    const { email: rawEmail, password } = validationResult.data;
+    const email = rawEmail.trim().toLowerCase();
 
     // 2. Query user by email
     const loginResult = await pool.query(
-      'SELECT id, email, password_hash, role FROM users WHERE email = ? LIMIT 1',
+      'SELECT id, email, password_hash, role, email_verified FROM users WHERE email = ? LIMIT 1',
       [email]
     );
     const users = Array.isArray(loginResult) ? loginResult[0] : [];
@@ -179,6 +207,17 @@ export async function login(req, res, next) {
       });
     }
 
+    if (!user.email_verified) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'EMAIL_UNVERIFIED',
+          message: 'Your email address is unverified. Please verify your email to log in.',
+          resendEndpoint: '/api/auth/resend-verification',
+        }
+      });
+    }
+
     // 4. Generate JWT
     const token = createAccessToken(user);
     const refreshToken = createRefreshToken(user);
@@ -191,6 +230,7 @@ export async function login(req, res, next) {
           id: user.id,
           email: user.email,
           role: user.role,
+          email_verified: Boolean(user.email_verified),
         },
         token,
         refreshToken,
@@ -247,7 +287,7 @@ export async function getProfile(req, res, next) {
   try {
     // req.user is set by auth middleware
     const [users] = await pool.query(
-      'SELECT id, email, role, status, created_at FROM users WHERE id = ? LIMIT 1',
+      'SELECT id, email, role, status, email_verified, created_at FROM users WHERE id = ? LIMIT 1',
       [req.user.id]
     );
 
@@ -260,7 +300,12 @@ export async function getProfile(req, res, next) {
 
     res.status(200).json({
       success: true,
-      data: { user: users[0] },
+      data: {
+        user: {
+          ...users[0],
+          email_verified: Boolean(users[0].email_verified),
+        },
+      },
     });
   } catch (err) {
     next(err);

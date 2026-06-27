@@ -1,1 +1,1 @@
-export * from '@housing/shared';
+export * from '@capstone-house-finder/shf-api';

@@ -185,6 +185,7 @@ export const adminApi = {
   getUsers: (token: string) => apiRequest('/api/admin/users', { token }),
   getMetrics: (token: string) => apiRequest('/api/admin/metrics', { token }),
   suspendUser: (token: string, userId: number) => apiRequest(`/api/admin/users/${userId}/suspend`, { method: 'PATCH', token }),
+  unsuspendUser: (token: string, userId: number) => apiRequest(`/api/admin/users/${userId}/unsuspend`, { method: 'PATCH', token }),
   deleteUser: (token: string, userId: number) => apiRequest(`/api/admin/users/${userId}`, { method: 'DELETE', token }),
   getListings: (token: string) => apiRequest('/api/admin/listings', { token }),
   getFlaggedListings: (token: string) => apiRequest('/api/admin/listings', { token }),

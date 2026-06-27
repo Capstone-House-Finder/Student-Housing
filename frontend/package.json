@@ -2,6 +2,7 @@
   "name": "my-project",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@housing/shared": "file:../packages/shared",
+    "@capstone-house-finder/shf-api": "^1.0.0",
     "@popperjs/core": "^2.11.8",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",
@@ -76,6 +77,7 @@
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "globals": "^17.7.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "postcss": "^8.5",

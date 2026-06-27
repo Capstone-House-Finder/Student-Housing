@@ -18,29 +18,46 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // Authentication token from cookies
   const token = request.cookies.get('authToken')?.value;
-  const isAuthenticated = !!token;
-  // After authentication check, verify email status
+  let isAuthenticated = !!token;
+
+  // After authentication check, verify email status and token validity
   if (isAuthenticated) {
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
       const meResponse = await fetch(`${apiBase}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // Token rejected by backend (expired, malformed, revoked) — treat as unauthenticated
+      if (meResponse.status === 401) {
+        isAuthenticated = false;
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('from', pathname);
+        const resp = NextResponse.redirect(loginUrl);
+        resp.cookies.delete('authToken');
+        resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+        return resp;
+      }
+
       const meData = await meResponse.json();
       if (meData.success && meData.data && meData.data.user && meData.data.user.email_verified === false) {
         // Allow access to verification pages
         if (!pathname.startsWith('/verify-pending') && !pathname.startsWith('/verify-email')) {
-          return NextResponse.redirect(new URL('/verify-pending', request.url));
+          const resp = NextResponse.redirect(new URL('/verify-pending', request.url));
+          resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+          return resp;
         }
       }
-    } catch (e) {
-      // ignore errors, proceed normally
+    } catch (_e) {
+      // Network error — proceed without blocking
     }
   }
 
   // Redirect authenticated users away from login/register pages
   if (authRoutes.some(route => pathname.startsWith(route)) && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const resp = NextResponse.redirect(new URL('/dashboard', request.url));
+    resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return resp;
   }
 
   // Protect routes that require authentication
@@ -49,10 +66,17 @@ export async function middleware(request: NextRequest) {
     // Redirect to login page with return URL
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
+    const resp = NextResponse.redirect(loginUrl);
+    resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return resp;
   }
 
-  return NextResponse.next();
+  // For protected pages that ARE authenticated, prevent browser from caching them
+  const response = NextResponse.next();
+  if (isProtectedRoute) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
+  return response;
 }
 
 export const config = {

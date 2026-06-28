@@ -147,6 +147,25 @@ export async function getListing(req, res, next) {
         );
         listing.photos = photoRows;
 
+        // Fetch linked reviews and their landlord replies
+        const [reviewRows] = await pool.query(
+            `SELECT r.id, r.rating, r.comment, r.created_at, u.email as student_email 
+             FROM reviews r
+             JOIN users u ON r.student_id = u.id
+             WHERE r.listing_id = ?
+             ORDER BY r.created_at DESC`,
+            [id]
+        );
+
+        for (const review of reviewRows) {
+            const [replyRows] = await pool.query(
+                `SELECT id, reply as text, created_at FROM review_replies WHERE review_id = ?`,
+                [review.id]
+            );
+            review.reply = replyRows[0] || null;
+        }
+        listing.reviews = reviewRows;
+
         res.status(200).json({ success: true, data: listing });
     } catch (err) {
         next(err);
@@ -356,9 +375,19 @@ export async function searchListings(req, res, next) {
         let query = `SELECT * FROM listings WHERE ${where.join(' AND ')}`;
 
         // Sorting
-        const allowedSort = ['price', 'created_at', 'location'];
-        const order = allowedSort.includes(sortBy) ? sortBy : 'created_at';
-        query += ` ORDER BY ${order} DESC`;
+        const allowedSort = ['price', '-price', 'created_at', '-created_at', 'location', '-location'];
+        let order = 'created_at';
+        let direction = 'DESC';
+        if (allowedSort.includes(sortBy)) {
+            if (sortBy.startsWith('-')) {
+                order = sortBy.substring(1);
+                direction = 'ASC';
+            } else {
+                order = sortBy;
+                direction = 'DESC';
+            }
+        }
+        query += ` ORDER BY ${order} ${direction}`;
 
         // Pagination
         const offset = (Number(page) - 1) * Number(limit);
@@ -408,9 +437,13 @@ export async function getLandlordDashboard(req, res, next) {
         const [[{ total_contacts }]] = await pool.query('SELECT COUNT(*) AS total_contacts FROM conversations WHERE landlord_id = ?', [landlordId]);
 
         
-        // Listings
+        // Listings with interested student count
         const [listings] = await pool.query(
-            'SELECT * FROM listings WHERE landlord_id = ? AND deleted_at IS NULL ORDER BY created_at DESC',
+            `SELECT l.*, 
+                (SELECT COUNT(*) FROM conversations c WHERE c.listing_id = l.id) as interested_students
+             FROM listings l 
+             WHERE l.landlord_id = ? AND l.deleted_at IS NULL 
+             ORDER BY l.created_at DESC`,
             [landlordId]
         );
 

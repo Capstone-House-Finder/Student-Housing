@@ -18,6 +18,7 @@ interface Listing {
   status: string;
   photos?: { url: string }[];
   created_at: string;
+  interested_students?: number;
 }
 
 interface DashboardStats {
@@ -405,6 +406,7 @@ export default function LandlordDashboardPage() {
                       <th>Price</th>
                       <th>Location</th>
                       <th>Status</th>
+                      <th>Interested</th>
                       <th>Created</th>
                       <th>Actions</th>
                     </tr>
@@ -439,6 +441,11 @@ export default function LandlordDashboardPage() {
                         <td>
                           <span className={`badge ${getStatusBadgeClass(listing.status)}`}>
                             {formatStatus(listing.status)}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="badge bg-info">
+                            {listing.interested_students || 0}
                           </span>
                         </td>
                         <td>{new Date(listing.created_at).toLocaleDateString()}</td>

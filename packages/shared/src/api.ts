@@ -173,6 +173,7 @@ export const rentalsApi = {
   create: (token: string, data: { student_id?: number; student_email?: string; listing_id: number; start_date: string; end_date?: string }) =>
     apiRequest('/api/rentals', { method: 'POST', token, body: data }),
   getLandlordRentals: (token: string) => apiRequest('/api/rentals/landlord', { token }),
+  getStudentRentals: (token: string) => apiRequest('/api/rentals/student', { token }),
 };
 
 export const contactsApi = {

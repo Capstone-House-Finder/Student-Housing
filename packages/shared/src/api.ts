@@ -173,6 +173,7 @@ export const rentalsApi = {
   create: (token: string, data: { student_id?: number; student_email?: string; listing_id: number; start_date: string; end_date?: string }) =>
     apiRequest('/api/rentals', { method: 'POST', token, body: data }),
   getLandlordRentals: (token: string) => apiRequest('/api/rentals/landlord', { token }),
+  getStudentRentals: (token: string) => apiRequest('/api/rentals/student', { token }),
 };
 
 export const contactsApi = {
@@ -185,14 +186,19 @@ export const adminApi = {
   getUsers: (token: string) => apiRequest('/api/admin/users', { token }),
   getMetrics: (token: string) => apiRequest('/api/admin/metrics', { token }),
   suspendUser: (token: string, userId: number) => apiRequest(`/api/admin/users/${userId}/suspend`, { method: 'PATCH', token }),
+  unsuspendUser: (token: string, userId: number) => apiRequest(`/api/admin/users/${userId}/unsuspend`, { method: 'PATCH', token }),
   deleteUser: (token: string, userId: number) => apiRequest(`/api/admin/users/${userId}`, { method: 'DELETE', token }),
   getListings: (token: string) => apiRequest('/api/admin/listings', { token }),
   getFlaggedListings: (token: string) => apiRequest('/api/admin/listings', { token }),
   verifyListing: (token: string, listingId: number) => apiRequest(`/api/admin/listings/${listingId}/verify`, { method: 'PATCH', token }),
+  rejectListing: (token: string, listingId: number) => apiRequest(`/api/admin/listings/${listingId}/reject`, { method: 'PATCH', token }),
   deleteListing: (token: string, listingId: number) => apiRequest(`/api/admin/listings/${listingId}`, { method: 'DELETE', token }),
   getReports: (token: string) => apiRequest('/api/reports', { token }),
   resolveReport: (token: string, reportId: number, status: 'resolved' | 'dismissed') => apiRequest(`/api/reports/${reportId}/status`, { method: 'PATCH', token, body: { status } }),
   getAmenities: (token: string) => apiRequest('/api/amenities', { token }),
   createAmenity: (token: string, name: string) => apiRequest('/api/amenities', { method: 'POST', token, body: { name } }),
   deleteAmenity: (token: string, id: number) => apiRequest(`/api/amenities/${id}`, { method: 'DELETE', token }),
+  getReviews: (token: string) => apiRequest('/api/reviews/admin', { token }),
+  updateReviewStatus: (token: string, reviewId: number, status: 'approved' | 'deleted' | 'flagged') =>
+    apiRequest(`/api/reviews/admin/${reviewId}/status`, { method: 'PATCH', token, body: { status } }),
 };

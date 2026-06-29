@@ -10,7 +10,7 @@ jest.unstable_mockModule('../src/config/database.js', () => ({
   })),
 }));
 
-let userController, adminController;
+let userController;
 
 beforeAll(async () => {
   // Controllers are exported from userController.js and admin routes use userController functions

@@ -197,4 +197,83 @@ describe('BE-02: User Login Endpoint', () => {
     await login(req, res, next);
     expect(res.status).toHaveBeenCalledWith(400);
   });
+
+  it('should return 403 ACCOUNT_SUSPENDED for suspended users', async () => {
+    const { req, res, next } = mockReqRes({
+      email: 'suspended@example.com',
+      password: 'TestPass123!',
+    });
+    mockQueryFn.mockResolvedValueOnce([[
+      { id: 2, email: 'suspended@example.com', password_hash: 'hashed', role: 'student', status: 'suspended', email_verified: true }
+    ]]);
+    jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(true);
+
+    await login(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      error: expect.objectContaining({ code: 'ACCOUNT_SUSPENDED' }),
+    });
+  });
+});
+
+// ── JWT Middleware ───────────────────────────────────────────────────────────
+describe('JWT authenticate middleware', () => {
+  let authenticate;
+
+  beforeAll(async () => {
+    const mod = await import('../../src/middleware/auth.js');
+    authenticate = mod.authenticate;
+  });
+
+  function mockMiddlewareReqRes(authHeader) {
+    return {
+      req: { headers: authHeader ? { authorization: authHeader } : {} },
+      res: { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() },
+      next: jest.fn(),
+    };
+  }
+
+  it('returns 401 when Authorization header is missing', () => {
+    const { req, res, next } = mockMiddlewareReqRes(null);
+    authenticate(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when token is malformed', () => {
+    const { req, res, next } = mockMiddlewareReqRes('Bearer not.a.valid.jwt');
+    authenticate(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when token is expired', () => {
+    // Sign a token that expired 1 second ago
+    const import_jwt = jest.requireActual('jsonwebtoken');
+    const expiredToken = import_jwt.sign(
+      { id: 99, role: 'student' },
+      process.env.JWT_SECRET,
+      { expiresIn: '-1s' }
+    );
+    const { req, res, next } = mockMiddlewareReqRes(`Bearer ${expiredToken}`);
+    authenticate(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('calls next() and attaches user for a valid token', () => {
+    const import_jwt = jest.requireActual('jsonwebtoken');
+    const validToken = import_jwt.sign(
+      { id: 1, role: 'student' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    const { req, res, next } = mockMiddlewareReqRes(`Bearer ${validToken}`);
+    authenticate(req, res, next);
+    expect(next).toHaveBeenCalled();
+    expect(req.user).toBeDefined();
+    expect(req.user.id).toBe(1);
+  });
 });

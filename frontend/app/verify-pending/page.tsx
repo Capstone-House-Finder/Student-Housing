@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@housing/shared';
+import { authApi } from '@capstone-house-finder/shf-api';
 
 const RESEND_COOLDOWN = 60;
 

@@ -184,7 +184,7 @@ export async function login(req, res, next) {
 
     // 2. Query user by email
     const loginResult = await pool.query(
-      'SELECT id, email, password_hash, role, email_verified FROM users WHERE email = ? LIMIT 1',
+      'SELECT id, email, password_hash, role, status, email_verified FROM users WHERE email = ? LIMIT 1',
       [email]
     );
     const users = Array.isArray(loginResult) ? loginResult[0] : [];
@@ -204,6 +204,17 @@ export async function login(req, res, next) {
       return res.status(401).json({
         success: false,
         error: { message: 'Invalid credentials' },
+      });
+    }
+
+    // 4. Reject suspended accounts
+    if (user.status === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ACCOUNT_SUSPENDED',
+          message: 'Your account has been suspended. Please contact support.',
+        },
       });
     }
 
@@ -369,7 +380,7 @@ export async function suspendUser(req, res, next) {
   const pool = getPoolInstance();
   const userId = parseInt(req.params.id, 10);
   try {
-    // Verify user exists and is active
+    // Verify user exists and is active (not suspended or deleted)
     const [rows] = await pool.query(
       'SELECT id FROM users WHERE id = ? AND status = ?',
       [userId, 'active']
@@ -377,7 +388,7 @@ export async function suspendUser(req, res, next) {
     if (!rows || rows.length === 0) {
       return res.status(400).json({
         success: false,
-        error: { message: 'User not found or already suspended' },
+        error: { message: 'User not found, already suspended, or deleted' },
       });
     }
     await pool.query('UPDATE users SET status = ? WHERE id = ?', ['suspended', userId]);
@@ -385,6 +396,32 @@ export async function suspendUser(req, res, next) {
     res.status(200).json({
       success: true,
       message: 'User suspended',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Admin: Unsuspend User ─────────────────────────────────────────────────
+export async function unsuspendUser(req, res, next) {
+  const pool = getPoolInstance();
+  const userId = parseInt(req.params.id, 10);
+  try {
+    // Verify user exists and is suspended (not deleted)
+    const [rows] = await pool.query(
+      'SELECT id FROM users WHERE id = ? AND status = ?',
+      [userId, 'suspended']
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'User not found, not suspended, or deleted' },
+      });
+    }
+    await pool.query('UPDATE users SET status = ? WHERE id = ?', ['active', userId]);
+    res.status(200).json({
+      success: true,
+      message: 'User unsuspended',
     });
   } catch (err) {
     next(err);
@@ -404,9 +441,12 @@ export async function deleteUser(req, res, next) {
     await pool.query('DELETE FROM rentals WHERE student_id = ? OR landlord_id = ?', [userId, userId]);
     // Delete reviews authored by the user
     await pool.query('DELETE FROM reviews WHERE student_id = ?', [userId]);
-    // Anonymize email and suspend account
+    // Anonymize email and mark as deleted
     const anonymizedEmail = `deleted_${userId}@example.com`;
-    await pool.query('UPDATE users SET email = ?, role = ? WHERE id = ?', [anonymizedEmail, 'suspended', userId]);
+    await pool.query(
+      'UPDATE users SET email = ?, status = ?, email_verified = FALSE WHERE id = ?',
+      [anonymizedEmail, 'deleted', userId]
+    );
     res.status(200).json({
       success: true,
       message: 'User deleted (anonymized) and related data removed',
@@ -420,9 +460,9 @@ export async function deleteUser(req, res, next) {
 export async function getAdminListings(req, res, next) {
   const pool = getPoolInstance();
   try {
-    // Return flagged listings that are not deleted
+    // Return all non-deleted listings (pending verification, flagged, and verified)
     const [listings] = await pool.query(
-      'SELECT * FROM listings WHERE flagged = true AND deleted_at IS NULL',
+      'SELECT l.*, u.email as landlord_email FROM listings l JOIN users u ON l.landlord_id = u.id WHERE l.deleted_at IS NULL ORDER BY l.verified ASC, l.flagged DESC, l.created_at DESC',
       []
     );
     res.status(200).json({ success: true, data: listings });
@@ -444,6 +484,25 @@ export async function verifyListing(req, res, next) {
       return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
     }
     // Return updated listing
+    const [rows] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
+    res.status(200).json({ success: true, data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function rejectListing(req, res, next) {
+  const pool = getPoolInstance();
+  const listingId = parseInt(req.params.id, 10);
+  try {
+    // Mark listing as not verified and flagged (rejected)
+    const [result] = await pool.query(
+      'UPDATE listings SET verified = false, flagged = true WHERE id = ? AND deleted_at IS NULL',
+      [listingId]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
+    }
     const [rows] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
     res.status(200).json({ success: true, data: rows[0] });
   } catch (err) {

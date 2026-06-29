@@ -3,13 +3,11 @@ import { ResetPasswordForm } from '@/app/reset-password/page';
 import { API } from '@/lib/api';
 
 const pushMock = jest.fn();
-let searchParamString = 'token=valid-token';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
-  useSearchParams: () => new URLSearchParams(searchParamString),
 }));
 
 jest.mock('@/lib/api', () => ({
@@ -20,7 +18,7 @@ jest.mock('@/lib/api', () => ({
 
 describe('ResetPasswordForm', () => {
   beforeEach(() => {
-    searchParamString = 'token=valid-token';
+    window.history.pushState({}, 'Test', '/');
     pushMock.mockClear();
     jest.useFakeTimers();
     jest.mocked(API.post).mockReset();
@@ -37,10 +35,10 @@ describe('ResetPasswordForm', () => {
     jest.useRealTimers();
   });
 
-  it('accepts a token-only reset link and submits the backend payload', async () => {
-    render(<ResetPasswordForm />);
+  it('accepts a path-based token prop and submits the backend payload', async () => {
+    render(<ResetPasswordForm token="valid-token" />);
 
-    fireEvent.change(screen.getByLabelText('New Password'), {
+    fireEvent.change(await screen.findByLabelText('New Password'), {
       target: { value: 'NewPass123!' },
     });
     fireEvent.change(screen.getByLabelText('Confirm New Password'), {
@@ -63,13 +61,36 @@ describe('ResetPasswordForm', () => {
     expect(pushMock).toHaveBeenCalledWith('/login?reset=success');
   });
 
-  it('shows a recovery action when the token is missing', () => {
-    searchParamString = '';
+  it('falls back to query param token when no prop is given', async () => {
+    window.history.pushState({}, 'Test', '/?token=query-token');
 
     render(<ResetPasswordForm />);
 
-    expect(screen.getByText('Invalid or missing reset link. Please request a new password reset.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Request Password Reset' })).toHaveAttribute('href', '/forgot-password');
+    fireEvent.change(await screen.findByLabelText('New Password'), {
+      target: { value: 'NewPass123!' },
+    });
+    fireEvent.change(screen.getByLabelText('Confirm New Password'), {
+      target: { value: 'NewPass123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Password' }));
+
+    await waitFor(() => {
+      expect(API.post).toHaveBeenCalledWith('/auth/reset-password', {
+        token: 'query-token',
+        password: 'NewPass123!',
+      });
+    });
+  });
+
+  it('shows a recovery action when the token is missing', async () => {
+    render(<ResetPasswordForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid or missing reset link. Please request a new password reset.')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: 'Request Password Reset' })).toHaveAttribute('href', '/forgot-password');
+    });
     expect(API.post).not.toHaveBeenCalled();
   });
 });

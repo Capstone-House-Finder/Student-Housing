@@ -167,11 +167,13 @@ CREATE TABLE reviews (
   rental_id   INT       NOT NULL,
   rating      TINYINT   NOT NULL CHECK (rating BETWEEN 1 AND 5),
   comment     TEXT,
+  status      ENUM('approved','flagged','deleted') NOT NULL DEFAULT 'approved',
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
   FOREIGN KEY (student_id) REFERENCES users(id)    ON DELETE CASCADE,
   FOREIGN KEY (rental_id)  REFERENCES rentals(id)  ON DELETE CASCADE,
-  UNIQUE KEY uq_one_review_per_rental (rental_id)
+  UNIQUE KEY uq_one_review_per_rental (rental_id),
+  INDEX idx_status (status)
 );
 
 CREATE TABLE review_replies (

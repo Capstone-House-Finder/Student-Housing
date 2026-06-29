@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi, type ApiResponse } from '@housing/shared';
+import { authApi, type ApiResponse } from '@capstone-house-finder/shf-api';
 import Cookies from 'js-cookie';
 
 const RESEND_COOLDOWN = 60; // seconds

@@ -67,6 +67,19 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleUnsuspendUser = async (userId: number) => {
+    if (!token) return;
+    if (!confirm('Are you sure you want to unsuspend this user?')) return;
+
+    const response = await adminApi.unsuspendUser(token, userId);
+    if (response.success) {
+      setSuccessMessage('User unsuspended successfully');
+      fetchUsers();
+    } else {
+      setError(response.error?.message || 'Failed to unsuspend user');
+    }
+  };
+
   const handleDeleteUser = async (userId: number) => {
     if (!token) return;
     if (!confirm('Are you sure you want to delete this user? This will anonymize their account and remove their data.')) return;
@@ -139,7 +152,7 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
                   <td>
-                    <span className={`badge ${u.status === 'active' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                    <span className={`badge ${u.status === 'active' ? 'bg-success' : u.status === 'suspended' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
                       {u.status.charAt(0).toUpperCase() + u.status.slice(1)}
                     </span>
                   </td>
@@ -147,15 +160,23 @@ export default function AdminUsersPage() {
                   <td className="text-end px-4">
                     <div className="d-flex justify-content-end gap-2">
                       {u.status === 'active' && u.role !== 'admin' && (
-                        <button 
+                        <button
                           className="btn btn-sm btn-outline-warning"
                           onClick={() => handleSuspendUser(u.id)}
                         >
                           Suspend
                         </button>
                       )}
-                      {u.role !== 'admin' && (
-                        <button 
+                      {u.status === 'suspended' && u.role !== 'admin' && (
+                        <button
+                          className="btn btn-sm btn-outline-success"
+                          onClick={() => handleUnsuspendUser(u.id)}
+                        >
+                          Unsuspend
+                        </button>
+                      )}
+                      {u.status !== 'deleted' && u.role !== 'admin' && (
+                        <button
                           className="btn btn-sm btn-outline-danger"
                           onClick={() => handleDeleteUser(u.id)}
                         >

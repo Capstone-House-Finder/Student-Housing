@@ -12,10 +12,12 @@ router.get('/metrics', authenticate, admin, metricsController.getMetrics);
 router.get('/stats', authenticate, admin, metricsController.getMetrics); // Compatibility alias
 router.get('/activity', authenticate, admin, metricsController.getRecentActivity);
 router.patch('/users/:id/suspend', authenticate, admin, userController.suspendUser);
+router.patch('/users/:id/unsuspend', authenticate, admin, userController.unsuspendUser);
 router.delete('/users/:id', authenticate, admin, userController.deleteUser);
 // Admin listing moderation endpoints
 router.get('/listings', authenticate, admin, userController.getAdminListings);
 router.patch('/listings/:id/verify', authenticate, admin, userController.verifyListing);
+router.patch('/listings/:id/reject', authenticate, admin, userController.rejectListing);
 router.delete('/listings/:id', authenticate, admin, userController.deleteListingAdmin);
 
 export default router;

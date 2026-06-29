@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Fallback to cookie for middleware support
       if (!savedToken) {
-        savedToken = Cookies.get('authToken');
+        savedToken = Cookies.get('authToken') ?? null;
       }
 
       if (savedToken) {

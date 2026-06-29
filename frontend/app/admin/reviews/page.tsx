@@ -50,7 +50,7 @@ export default function AdminReviewsPage() {
     setIsLoading(true);
     const response = await adminApi.getReviews(token);
     if (response.success) {
-      setReviews(response.data);
+      setReviews(response.data as Review[]);
     } else {
       setError(response.error?.message || 'Failed to fetch reviews');
     }

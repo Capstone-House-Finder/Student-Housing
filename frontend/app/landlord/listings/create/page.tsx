@@ -178,9 +178,8 @@ export default function CreateListingPage() {
       formData.append('photos', file);
     });
 
-    const result = await listingsApi.create(token, formData);
-
-      const result = await listingsApi.create(token, listingData);
+    try {
+      const result = await listingsApi.create(token, formData);
 
       if (result.success && result.data) {
         const listingId = (result.data as any).id;

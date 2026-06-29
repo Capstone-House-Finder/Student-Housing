@@ -2,6 +2,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+function getRoleFromToken(token: string): string | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.role || null;
+    }
+  } catch (e) {
+    // Invalid token
+  }
+  return null;
+}
+
 // Protected routes that require authentication
 const protectedRoutes = [
   '/dashboard',

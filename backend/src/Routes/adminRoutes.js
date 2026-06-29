@@ -17,6 +17,7 @@ router.delete('/users/:id', authenticate, admin, userController.deleteUser);
 // Admin listing moderation endpoints
 router.get('/listings', authenticate, admin, userController.getAdminListings);
 router.patch('/listings/:id/verify', authenticate, admin, userController.verifyListing);
+router.patch('/listings/:id/reject', authenticate, admin, userController.rejectListing);
 router.delete('/listings/:id', authenticate, admin, userController.deleteListingAdmin);
 
 export default router;

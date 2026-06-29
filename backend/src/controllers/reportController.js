@@ -66,7 +66,12 @@ export async function submitReport(req, res, next) {
 
 export async function getAllReports(req, res, next) {
   try {
-    const [reports] = await pool.query('SELECT * FROM reports ORDER BY created_at DESC');
+    const [reports] = await pool.query(
+      `SELECT r.*, u.email as reporter_email 
+       FROM reports r 
+       JOIN users u ON r.reporter_id = u.id 
+       ORDER BY r.created_at DESC`
+    );
     return res.status(200).json({ success: true, data: reports });
   } catch (err) {
     next(err);

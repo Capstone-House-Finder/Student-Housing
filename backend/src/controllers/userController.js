@@ -460,9 +460,9 @@ export async function deleteUser(req, res, next) {
 export async function getAdminListings(req, res, next) {
   const pool = getPoolInstance();
   try {
-    // Return flagged listings that are not deleted
+    // Return all non-deleted listings (pending verification, flagged, and verified)
     const [listings] = await pool.query(
-      'SELECT * FROM listings WHERE flagged = true AND deleted_at IS NULL',
+      'SELECT l.*, u.email as landlord_email FROM listings l JOIN users u ON l.landlord_id = u.id WHERE l.deleted_at IS NULL ORDER BY l.verified ASC, l.flagged DESC, l.created_at DESC',
       []
     );
     res.status(200).json({ success: true, data: listings });
@@ -484,6 +484,25 @@ export async function verifyListing(req, res, next) {
       return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
     }
     // Return updated listing
+    const [rows] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
+    res.status(200).json({ success: true, data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function rejectListing(req, res, next) {
+  const pool = getPoolInstance();
+  const listingId = parseInt(req.params.id, 10);
+  try {
+    // Mark listing as not verified and flagged (rejected)
+    const [result] = await pool.query(
+      'UPDATE listings SET verified = false, flagged = true WHERE id = ? AND deleted_at IS NULL',
+      [listingId]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
+    }
     const [rows] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
     res.status(200).json({ success: true, data: rows[0] });
   } catch (err) {

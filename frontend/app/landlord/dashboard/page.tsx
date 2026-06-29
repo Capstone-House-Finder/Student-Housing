@@ -16,6 +16,7 @@ interface Listing {
   bedrooms?: number;
   bathrooms?: number;
   status: string;
+  verified?: boolean;
   photos?: { url: string }[];
   created_at: string;
   interested_students?: number;
@@ -376,11 +377,11 @@ export default function LandlordDashboardPage() {
                 </div>
                 <div className="d-flex align-items-center mb-2">
                   <span className="badge bg-danger me-2">Rented</span>
-                  <small className="text-muted">Not available</small>
+                  <small className="text-muted">Currently rented to a student</small>
                 </div>
-                <div className="d-flex align-items-center">
-                  <span className="badge bg-info me-2">Pending</span>
-                  <small className="text-muted">Awaiting approval</small>
+                <div className="d-flex align-items-center mb-2">
+                  <span className="badge bg-warning text-dark me-2">Pending Approval</span>
+                  <small className="text-muted">Awaiting admin review</small>
                 </div>
               </div>
             </div>
@@ -439,9 +440,14 @@ export default function LandlordDashboardPage() {
                         <td>{listing.price.toLocaleString()} FCFA/mo</td>
                         <td>{listing.location}</td>
                         <td>
-                          <span className={`badge ${getStatusBadgeClass(listing.status)}`}>
-                            {formatStatus(listing.status)}
-                          </span>
+                          <div className="d-flex flex-column gap-1">
+                            <span className={`badge ${getStatusBadgeClass(listing.status)}`}>
+                              {formatStatus(listing.status)}
+                            </span>
+                            {listing.verified === false && (
+                              <span className="badge bg-warning text-dark">Pending Approval</span>
+                            )}
+                          </div>
                         </td>
                         <td>
                           <span className="badge bg-info">

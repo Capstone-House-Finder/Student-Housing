@@ -1,24 +1,24 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import { API } from '@/lib/api';
 import { resetPasswordSchema, ResetPasswordFormData } from '@/lib/validations';
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({ token: propToken }: { token?: string } = {}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const tokenRef = useRef<string | null>(null);
   const [serverError, setServerError] = useState('');
+  const [ready, setReady] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const token = searchParams.get('token');
 
   const {
     register,
@@ -29,19 +29,24 @@ export function ResetPasswordForm() {
   });
 
   useEffect(() => {
-    if (!token) {
+    const t = propToken || new URLSearchParams(window.location.search).get('token');
+    tokenRef.current = t;
+    setHasToken(!!t);
+    if (!t) {
       setServerError('Invalid or missing reset link. Please request a new password reset.');
     }
-  }, [token]);
+    setReady(true);
+  }, [propToken]);
 
   const onSubmit = async (data: ResetPasswordFormData) => {
-    if (!token) return;
+    const t = tokenRef.current;
+    if (!t) return;
 
     setIsSubmitting(true);
     setServerError('');
 
     const result = await API.post('/auth/reset-password', {
-      token,
+      token: t,
       password: data.newPassword,
     });
 
@@ -62,6 +67,25 @@ export function ResetPasswordForm() {
 
     setIsSubmitting(false);
   };
+
+  if (!ready) {
+    return (
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-md-6 col-lg-5">
+            <div className="card shadow">
+              <div className="card-body p-4 text-center">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="mt-3 text-muted">Loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showSuccess) {
     return (
@@ -112,7 +136,7 @@ export function ResetPasswordForm() {
                 </div>
               )}
 
-              {!token ? (
+              {!hasToken ? (
                 <div className="text-center">
                   <Link href="/forgot-password" className="btn btn-primary">
                     Request Password Reset
@@ -207,23 +231,20 @@ export function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="container py-5">
-        <div className="row justify-content-center">
-          <div className="col-md-6 col-lg-5">
-            <div className="card shadow">
-              <div className="card-body p-4 text-center">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                <p className="mt-3 text-muted">Loading...</p>
-              </div>
+    <div className="container py-5">
+      <div className="row justify-content-center">
+        <div className="col-md-6 col-lg-5">
+          <div className="card shadow">
+            <div className="card-body p-4 text-center">
+              <h4 className="mb-3">Invalid Reset Link</h4>
+              <p className="text-muted mb-4">Please request a new password reset link.</p>
+              <Link href="/forgot-password" className="btn btn-primary">
+                Request Password Reset
+              </Link>
             </div>
           </div>
         </div>
       </div>
-    }>
-      <ResetPasswordForm />
-    </Suspense>
+    </div>
   );
 }

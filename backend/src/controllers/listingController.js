@@ -119,8 +119,8 @@ export async function getListing(req, res, next) {
              FROM listings l 
              JOIN users u ON l.landlord_id = u.id 
              LEFT JOIN user_profiles up ON l.landlord_id = up.user_id
-             WHERE l.id = ? AND l.deleted_at IS NULL AND (l.flagged = false OR l.landlord_id = ?)`,
-            [id, requesterId ?? null]
+             WHERE l.id = ? AND l.deleted_at IS NULL AND (l.flagged = false OR l.landlord_id = ?) AND (l.verified = true OR l.landlord_id = ?)`,
+            [id, requesterId ?? null, requesterId ?? null]
         );
         if (!rows.length) {
             return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
@@ -311,7 +311,7 @@ export async function randomListings(req, res, next) {
         // Return a random selection of listings for public preview
         // Limit to 12 listings as per BE-08 recommendation
         const [rows] = await pool.query(
-            'SELECT id, title, price, location, property_type FROM listings WHERE deleted_at IS NULL AND flagged = false ORDER BY RAND() LIMIT 12'
+            'SELECT id, title, price, location, property_type FROM listings WHERE deleted_at IS NULL AND flagged = false AND verified = true ORDER BY RAND() LIMIT 12'
         );
         res.status(200).json({ success: true, data: rows });
     } catch (err) {
@@ -334,7 +334,7 @@ export async function searchListings(req, res, next) {
             page = 1,
             limit = 20,
         } = req.query || {};
-        const where = ['deleted_at IS NULL', 'flagged = false'];
+        const where = ['deleted_at IS NULL', 'flagged = false', 'verified = true'];
         const params = [];
         if (location) {
             where.push('location = ?');

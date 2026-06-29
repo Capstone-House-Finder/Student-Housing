@@ -107,6 +107,8 @@ export async function getLandlordRentals(req, res, next) {
 export async function getStudentRentals(req, res, next) {
   try {
     const studentId = req.user?.id;
+    console.log('[getStudentRentals] Student ID:', studentId);
+    console.log('[getStudentRentals] Full user:', req.user);
     if (!studentId) {
       return res.status(401).json({ success: false, error: { message: 'Unauthenticated' } });
     }
@@ -121,7 +123,6 @@ export async function getStudentRentals(req, res, next) {
         l.id as listing_id,
         l.location,
         l.price,
-        l.photos,
         u.email as landlord_email,
         up.full_name as landlord_name,
         up.phone as landlord_phone
@@ -134,8 +135,12 @@ export async function getStudentRentals(req, res, next) {
       [studentId]
     );
 
+    console.log('[getStudentRentals] Query result rows:', rows);
+    console.log('[getStudentRentals] Number of rentals found:', rows.length);
+
     res.status(200).json({ success: true, data: rows });
   } catch (err) {
+    console.log('[getStudentRentals] Error:', err);
     next(err);
   }
 }

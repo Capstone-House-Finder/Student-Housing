@@ -191,10 +191,14 @@ export const adminApi = {
   getListings: (token: string) => apiRequest('/api/admin/listings', { token }),
   getFlaggedListings: (token: string) => apiRequest('/api/admin/listings', { token }),
   verifyListing: (token: string, listingId: number) => apiRequest(`/api/admin/listings/${listingId}/verify`, { method: 'PATCH', token }),
+  rejectListing: (token: string, listingId: number) => apiRequest(`/api/admin/listings/${listingId}/reject`, { method: 'PATCH', token }),
   deleteListing: (token: string, listingId: number) => apiRequest(`/api/admin/listings/${listingId}`, { method: 'DELETE', token }),
   getReports: (token: string) => apiRequest('/api/reports', { token }),
   resolveReport: (token: string, reportId: number, status: 'resolved' | 'dismissed') => apiRequest(`/api/reports/${reportId}/status`, { method: 'PATCH', token, body: { status } }),
   getAmenities: (token: string) => apiRequest('/api/amenities', { token }),
   createAmenity: (token: string, name: string) => apiRequest('/api/amenities', { method: 'POST', token, body: { name } }),
   deleteAmenity: (token: string, id: number) => apiRequest(`/api/amenities/${id}`, { method: 'DELETE', token }),
+  getReviews: (token: string) => apiRequest('/api/reviews/admin', { token }),
+  updateReviewStatus: (token: string, reviewId: number, status: 'approved' | 'deleted' | 'flagged') =>
+    apiRequest(`/api/reviews/admin/${reviewId}/status`, { method: 'PATCH', token, body: { status } }),
 };

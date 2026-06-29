@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@capstone-house-finder/shf-api": "^1.0.0",
+    "@capstone-house-finder/shf-api": "^1.1.1",
     "@popperjs/core": "^2.11.8",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",

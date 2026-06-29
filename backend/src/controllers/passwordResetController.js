@@ -66,7 +66,7 @@ export async function forgotPassword(req, res, next) {
     // Send email containing rawToken link
     try {
       const { sendEmail } = await import('../config/email.js');
-      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${rawToken}`;
+      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${rawToken}`;
       await sendEmail({
         to: email,
         subject: 'Password Reset Request',

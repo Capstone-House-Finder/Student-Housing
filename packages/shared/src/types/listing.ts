@@ -24,6 +24,8 @@ export interface Listing {
   landlord_id?: number;
   landlord_email?: string;
   status?: ListingStatus;
+  verified?: boolean;
+  flagged?: boolean;
   amenities?: Amenity[];
   photos?: Photo[];
   created_at?: string;

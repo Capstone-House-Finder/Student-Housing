@@ -218,21 +218,55 @@ export async function updateListing(req, res, next) {
         }
 
         // Update amenities if provided
-        if (Array.isArray(amenities)) {
+        if (Array.isArray(amenities) || (typeof amenities === 'string' && amenities)) {
+            const amenList = Array.isArray(amenities) ? amenities : [amenities];
             // Remove existing links
             await pool.query('DELETE FROM listing_amenities WHERE listing_id = ?', [id]);
-            if (amenities.length) {
-                const [amenitiesId] = await pool.query('SELECT id FROM amenities WHERE name IN (?)', [amenities]);
+            if (amenList.length) {
+                const [amenitiesId] = await pool.query('SELECT id FROM amenities WHERE name IN (?)', [amenList]);
                 const amenitiesIdArray = amenitiesId.map(a => a.id);
-                // Build values string for bulk insert
-                const valuesPlaceholders = amenitiesIdArray.map(() => '(?, ?)').join(', ');
-                const amenValues = [];
-                for (const amenId of amenitiesIdArray) {
-                    amenValues.push(id, amenId);
+                if (amenitiesIdArray.length > 0) {
+                    const valuesPlaceholders = amenitiesIdArray.map(() => '(?, ?)').join(', ');
+                    const amenValues = [];
+                    for (const amenId of amenitiesIdArray) {
+                        amenValues.push(id, amenId);
+                    }
+                    await pool.query(
+                        `INSERT INTO listing_amenities (listing_id, amenity_id) VALUES ${valuesPlaceholders}`,
+                        amenValues
+                    );
                 }
+            }
+        }
+
+        // Handle photo deletions
+        const deletePhotos = req.body.delete_photos || req.body['delete_photos[]'];
+        if (deletePhotos) {
+            const deleteIds = Array.isArray(deletePhotos) ? deletePhotos : [deletePhotos];
+            const { cloudinary } = await import('../config/cloudinary.js');
+            for (const photoId of deleteIds) {
+                const [[photo]] = await pool.query('SELECT public_id FROM listing_photos WHERE id = ? AND listing_id = ?', [photoId, id]);
+                if (photo) {
+                    if (photo.public_id) await cloudinary.uploader.destroy(photo.public_id);
+                    await pool.query('DELETE FROM listing_photos WHERE id = ?', [photoId]);
+                }
+            }
+        }
+
+        // Handle new photo uploads
+        if (req.files && req.files.length > 0) {
+            const { cloudinary } = await import('../config/cloudinary.js');
+            for (const file of req.files) {
+                const uploadResult = await new Promise((resolve, reject) => {
+                    const stream = cloudinary.uploader.upload_stream(
+                        { folder: `student-housing/listing-${id}` },
+                        (err, res) => (err ? reject(err) : resolve(res))
+                    );
+                    stream.end(file.buffer);
+                });
                 await pool.query(
-                    `INSERT INTO listing_amenities (listing_id, amenity_id) VALUES ${valuesPlaceholders}`,
-                    amenValues
+                    'INSERT INTO listing_photos (listing_id, url, public_id) VALUES (?, ?, ?)',
+                    [id, uploadResult.secure_url, uploadResult.public_id]
                 );
             }
         }

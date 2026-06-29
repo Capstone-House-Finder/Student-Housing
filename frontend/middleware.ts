@@ -53,6 +53,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Redirect /dashboard to the role-specific dashboard if authenticated
+  if (pathname === '/dashboard') {
+    if (isAuthenticated && token) {
+      const role = getRoleFromToken(token);
+      const dashboardPath = role === 'admin'
+        ? '/admin/dashboard'
+        : role === 'landlord'
+          ? '/landlord/dashboard'
+          : '/student/dashboard';
+      return NextResponse.redirect(new URL(dashboardPath, request.url));
+    }
+  }
+
   // Redirect authenticated users away from login/register pages
   if (authRoutes.some(route => pathname.startsWith(route)) && isAuthenticated) {
     const resp = NextResponse.redirect(new URL('/dashboard', request.url));

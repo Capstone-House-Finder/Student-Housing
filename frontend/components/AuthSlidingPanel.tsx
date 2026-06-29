@@ -90,7 +90,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
           : '/student/dashboard';
       router.push(dashboardPath);
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, showSuccess]);
 
   if (isAuthenticated && user) {
     return null;

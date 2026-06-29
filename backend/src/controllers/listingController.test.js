@@ -115,10 +115,11 @@ describe('getListing', () => {
     mockQuery.mockResolvedValueOnce([[fakeRow]]);
     mockQuery.mockResolvedValueOnce([[]]); // amenities
     mockQuery.mockResolvedValueOnce([[]]); // photos
+    mockQuery.mockResolvedValueOnce([[]]); // reviews
 
     await listingController.getListing(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: { ...fakeRow, amenities: [], photos: [] } });
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { ...fakeRow, amenities: [], photos: [], reviews: [] } });
   });
 
   it('returns 404 when not found', async () => {

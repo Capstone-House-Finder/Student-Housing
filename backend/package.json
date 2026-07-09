@@ -7,7 +7,8 @@
     "lint": "npx eslint .",
     "type-check": "echo 'No TypeScript in backend'",
     "build": "echo 'No build step needed'",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "nodemailer": "^6.9.13",
@@ -26,8 +27,9 @@
   },
   "devDependencies": {
     "eslint": "^9.0.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "playwright": "^1.44.0",
+    "axe-core": "^4.7.2"
   },
   "type": "module"
 }
-

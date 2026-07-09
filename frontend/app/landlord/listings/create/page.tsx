@@ -160,14 +160,26 @@ export default function CreateListingPage() {
     setIsSubmitting(true);
     setSubmitError('');
 
-    try {
-      // 1. Create the listing with JSON data
-      const listingData = {
-        ...data,
-        amenities: selectedAmenities,
-      };
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('description', data.description);
+    formData.append('price', data.price.toString());
+    formData.append('location', data.location);
+    formData.append('property_type', data.property_type);
+    if (data.bedrooms) formData.append('bedrooms', data.bedrooms.toString());
+    if (data.bathrooms) formData.append('bathrooms', data.bathrooms.toString());
+    if (data.square_meters) formData.append('square_meters', data.square_meters.toString());
 
-      const result = await listingsApi.create(token, listingData);
+    selectedAmenities.forEach((item) => {
+      formData.append('amenities[]', item.toString());
+    });
+
+    photoFiles.forEach((file) => {
+      formData.append('photos', file);
+    });
+
+    try {
+      const result = await listingsApi.create(token, formData);
 
       if (result.success && result.data) {
         const listingId = (result.data as any).id;
@@ -379,9 +391,9 @@ export default function CreateListingPage() {
                       <label htmlFor="squareMeters" className="form-label fw-bold">Sq. Meters</label>
                       <input
                         type="number"
-                        id="squareMeters"
+                        id="squareFeet"
                         className={`form-control form-control-lg ${errors.square_meters ? 'is-invalid' : ''}`}
-                        placeholder="e.g., 100"
+                        placeholder="e.g., 1200"
                         {...register('square_meters', { valueAsNumber: true })}
                       />
                       {errors.square_meters && <div className="invalid-feedback">{errors.square_meters.message}</div>}

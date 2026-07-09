@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { FormEvent, useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { listingsApi, amenitiesApi } from '@/lib/api';
@@ -25,19 +25,29 @@ interface Pagination {
   pages: number;
 }
 
+interface SearchFilters {
+  location: string;
+  minPrice: string;
+  maxPrice: string;
+  propertyType: string;
+  status: string;
+  selectedAmenities: string[];
+  sortBy: string;
+}
+
 const PROPERTY_TYPES = ['apartment', 'house', 'room', 'condo', 'townhouse'];
 const STATUS_OPTIONS = ['available', 'under_negotiation', 'rented'];
-const AMENITIES = ['WiFi', 'Parking', 'Gym', 'Pool', 'Laundry', 'Kitchen', 'Air Conditioning', 'Heating'];
 
-function SearchContent() {
+export function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { token, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [dbAmenities, setDbAmenities] = useState<string[]>([]);
+  const hasInitialSearch = searchParams.toString().length > 0;
 
   // Filter states
   const [location, setLocation] = useState(searchParams.get('location') || '');
@@ -50,24 +60,51 @@ function SearchContent() {
   );
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'date');
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
+  const [submittedFilters, setSubmittedFilters] = useState<SearchFilters | null>(() =>
+    hasInitialSearch
+      ? {
+        location: searchParams.get('location') || '',
+        minPrice: searchParams.get('minPrice') || '',
+        maxPrice: searchParams.get('maxPrice') || '',
+        propertyType: searchParams.get('property_type') || '',
+        status: searchParams.get('status') || '',
+        selectedAmenities: searchParams.get('amenities')?.split(',').filter(Boolean) || [],
+        sortBy: searchParams.get('sortBy') || 'date',
+      }
+      : null
+  );
 
-  const fetchListings = useCallback(async () => {
+  const buildSearchParams = useCallback((filters: SearchFilters, page: number) => {
+    const params = new URLSearchParams();
+    if (filters.location) params.set('location', filters.location);
+    if (filters.minPrice) params.set('minPrice', filters.minPrice);
+    if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
+    if (filters.propertyType) params.set('property_type', filters.propertyType);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.selectedAmenities.length > 0) params.set('amenities', filters.selectedAmenities.join(','));
+    if (filters.sortBy) params.set('sortBy', filters.sortBy);
+    if (page > 1) params.set('page', String(page));
+
+    return params;
+  }, []);
+
+  const fetchListings = useCallback(async (filters: SearchFilters, page: number) => {
     if (!token) return;
 
     setIsLoading(true);
 
     const params: Record<string, string | number> = {
-      page: currentPage,
+      page,
       limit: 12,
     };
 
-    if (location) params.location = location;
-    if (minPrice) params.minPrice = Number(minPrice);
-    if (maxPrice) params.maxPrice = Number(maxPrice);
-    if (propertyType) params.property_type = propertyType;
-    if (status) params.status = status;
-    if (selectedAmenities.length > 0) params.amenities = selectedAmenities.join(',');
-    if (sortBy) params.sortBy = sortBy;
+    if (filters.location) params.location = filters.location;
+    if (filters.minPrice) params.minPrice = Number(filters.minPrice);
+    if (filters.maxPrice) params.maxPrice = Number(filters.maxPrice);
+    if (filters.propertyType) params.property_type = filters.propertyType;
+    if (filters.status) params.status = filters.status;
+    if (filters.selectedAmenities.length > 0) params.amenities = filters.selectedAmenities.join(',');
+    if (filters.sortBy) params.sortBy = filters.sortBy;
 
     const response = await listingsApi.search(token, params);
 
@@ -78,7 +115,7 @@ function SearchContent() {
     }
 
     setIsLoading(false);
-  }, [token, location, minPrice, maxPrice, propertyType, status, selectedAmenities, sortBy, currentPage]);
+  }, [token]);
 
   // Fetch amenities on mount
   useEffect(() => {
@@ -99,30 +136,27 @@ function SearchContent() {
       return;
     }
 
-    if (token) {
-      // Debounce search
-      const timer = setTimeout(() => {
-        fetchListings();
-        updateURL();
-      }, 300);
+    if (token && submittedFilters) {
+      fetchListings(submittedFilters, currentPage);
 
-      return () => clearTimeout(timer);
+      const params = buildSearchParams(submittedFilters, currentPage);
+      const queryString = params.toString();
+      router.replace(`/search${queryString ? `?${queryString}` : ''}`, { scroll: false });
     }
-  }, [token, authLoading, isAuthenticated, router, fetchListings]);
+  }, [token, authLoading, isAuthenticated, router, fetchListings, buildSearchParams, submittedFilters, currentPage]);
 
-  const updateURL = () => {
-    const params = new URLSearchParams();
-    if (location) params.set('location', location);
-    if (minPrice) params.set('minPrice', minPrice);
-    if (maxPrice) params.set('maxPrice', maxPrice);
-    if (propertyType) params.set('property_type', propertyType);
-    if (status) params.set('status', status);
-    if (selectedAmenities.length > 0) params.set('amenities', selectedAmenities.join(','));
-    if (sortBy) params.set('sortBy', sortBy);
-    if (currentPage > 1) params.set('page', String(currentPage));
-
-    const queryString = params.toString();
-    router.replace(`/search${queryString ? `?${queryString}` : ''}`, { scroll: false });
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCurrentPage(1);
+    setSubmittedFilters({
+      location,
+      minPrice,
+      maxPrice,
+      propertyType,
+      status,
+      selectedAmenities,
+      sortBy,
+    });
   };
 
   const handleAmenityToggle = (amenity: string) => {
@@ -131,7 +165,6 @@ function SearchContent() {
         ? prev.filter((a) => a !== amenity)
         : [...prev, amenity]
     );
-    setCurrentPage(1);
   };
 
   const handleClearFilters = () => {
@@ -142,7 +175,6 @@ function SearchContent() {
     setStatus('');
     setSelectedAmenities([]);
     setSortBy('date');
-    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
@@ -169,7 +201,7 @@ function SearchContent() {
       <div className="row">
         {/* Filter Sidebar */}
         <div className="col-lg-3 mb-4">
-          <div className="card filter-sidebar">
+          <form className="card filter-sidebar" onSubmit={handleSubmit}>
             <div className="card-header d-flex justify-content-between align-items-center">
               <span className="fw-bold">Filters</span>
               <button
@@ -194,7 +226,6 @@ function SearchContent() {
                   value={location}
                   onChange={(e) => {
                     setLocation(e.target.value);
-                    setCurrentPage(1);
                   }}
                 />
               </div>
@@ -211,7 +242,6 @@ function SearchContent() {
                       value={minPrice}
                       onChange={(e) => {
                         setMinPrice(e.target.value);
-                        setCurrentPage(1);
                       }}
                     />
                   </div>
@@ -223,7 +253,6 @@ function SearchContent() {
                       value={maxPrice}
                       onChange={(e) => {
                         setMaxPrice(e.target.value);
-                        setCurrentPage(1);
                       }}
                     />
                   </div>
@@ -241,7 +270,6 @@ function SearchContent() {
                   value={propertyType}
                   onChange={(e) => {
                     setPropertyType(e.target.value);
-                    setCurrentPage(1);
                   }}
                 >
                   <option value="">All Types</option>
@@ -264,7 +292,6 @@ function SearchContent() {
                   value={status}
                   onChange={(e) => {
                     setStatus(e.target.value);
-                    setCurrentPage(1);
                   }}
                 >
                   <option value="">All Statuses</option>
@@ -285,11 +312,10 @@ function SearchContent() {
                       <button
                         key={amenity}
                         type="button"
-                        className={`btn btn-sm ${
-                          selectedAmenities.includes(amenity)
+                        className={`btn btn-sm ${selectedAmenities.includes(amenity)
                             ? 'btn-primary'
                             : 'btn-outline-secondary'
-                        }`}
+                          }`}
                         onClick={() => handleAmenityToggle(amenity)}
                       >
                         {amenity}
@@ -300,8 +326,12 @@ function SearchContent() {
                   )}
                 </div>
               </div>
+
+              <button type="submit" className="btn btn-primary w-100">
+                Search
+              </button>
             </div>
-          </div>
+          </form>
         </div>
 
         {/* Results */}
@@ -331,7 +361,19 @@ function SearchContent() {
           </div>
 
           {/* Listings Grid */}
-          {isLoading ? (
+          {!submittedFilters ? (
+            <div className="text-center py-5">
+              <div className="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" className="empty-state-icon mb-3" viewBox="0 0 16 16">
+                  <path d="M9.5 3a6.5 6.5 0 0 1 5.193 10.402l1.445 1.445a.75.75 0 0 1-1.06 1.06l-1.446-1.445A6.5 6.5 0 1 1 9.5 3Zm0 1.5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z" />
+                </svg>
+                <h4>Ready to Search</h4>
+                <p className="text-muted">
+                  Choose your filters, then submit the form to load matching properties.
+                </p>
+              </div>
+            </div>
+          ) : isLoading ? (
             <div className="text-center py-5">
               <div className="spinner-border text-primary" role="status">
                 <span className="visually-hidden">Loading...</span>
@@ -342,7 +384,7 @@ function SearchContent() {
             <div className="text-center py-5">
               <div className="empty-state">
                 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" className="empty-state-icon mb-3" viewBox="0 0 16 16">
-                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
                 </svg>
                 <h4>No Results Found</h4>
                 <p className="text-muted">

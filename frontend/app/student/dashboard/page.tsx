@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { reviewsApi, listingsApi } from '@/lib/api';
+import { reviewsApi, listingsApi, rentalsApi } from '@/lib/api';
 import StarRating from '@/components/StarRating';
 
 interface Review {
@@ -21,6 +21,21 @@ interface Review {
   };
 }
 
+interface Rental {
+  id: number;
+  listing_id: number;
+  listing_title: string;
+  location: string;
+  price: number;
+  start_date: string;
+  end_date?: string;
+  created_at: string;
+  landlord_email: string;
+  landlord_name?: string;
+  landlord_phone?: string;
+  photos?: { url: string }[];
+}
+
 interface DashboardStats {
   total_reviews: number;
   contact_requests: number;
@@ -32,6 +47,7 @@ export default function StudentDashboardPage() {
   
   const [stats, setStats] = useState<DashboardStats>({ total_reviews: 0, contact_requests: 0 });
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -53,12 +69,19 @@ export default function StudentDashboardPage() {
       if (!token) return;
 
       setIsLoading(true);
-      const response = await listingsApi.getStudentDashboard(token);
-      
-      if (response.success && response.data) {
-        const { stats, reviews } = response.data as any;
+      const [dashboardResponse, rentalsResponse] = await Promise.all([
+        listingsApi.getStudentDashboard(token),
+        rentalsApi.getStudentRentals(token)
+      ]);
+
+      if (dashboardResponse.success && dashboardResponse.data) {
+        const { stats, reviews } = dashboardResponse.data as any;
         setStats(stats);
         setReviews(reviews);
+      }
+
+      if (rentalsResponse.success && rentalsResponse.data) {
+        setRentals(rentalsResponse.data as Rental[]);
       }
 
       setIsLoading(false);
@@ -157,6 +180,14 @@ export default function StudentDashboardPage() {
         </li>
         <li className="nav-item">
           <button
+            className={`nav-link ${activeTab === 'rentals' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rentals')}
+          >
+            My Rentals ({rentals.length})
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
             className={`nav-link ${activeTab === 'reviews' ? 'active' : ''}`}
             onClick={() => setActiveTab('reviews')}
           >
@@ -231,6 +262,82 @@ export default function StudentDashboardPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'rentals' && (
+        <div className="card">
+          <div className="card-header">
+            <h5 className="mb-0">My Rentals ({rentals.length})</h5>
+          </div>
+          <div className="card-body">
+            {rentals.length > 0 ? (
+              <div className="table-responsive">
+                <table className="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Property</th>
+                      <th>Location</th>
+                      <th>Price</th>
+                      <th>Lease Period</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rentals.map((rental) => {
+                      const endDate = rental.end_date ? new Date(rental.end_date) : null;
+                      const isPast = endDate && endDate < new Date();
+                      return (
+                        <tr key={rental.id}>
+                          <td>
+                            <div className="fw-bold">{rental.listing_title}</div>
+                            <small className="text-muted">Landlord: {rental.landlord_name || rental.landlord_email}</small>
+                          </td>
+                          <td>{rental.location}</td>
+                          <td>{rental.price.toLocaleString()} FCFA/mo</td>
+                          <td>
+                            <div className="small">
+                              <span className="text-muted">From:</span> {new Date(rental.start_date).toLocaleDateString()}
+                            </div>
+                            {rental.end_date && (
+                              <div className="small">
+                                <span className="text-muted">To:</span> {new Date(rental.end_date).toLocaleDateString()}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            {isPast ? (
+                              <span className="badge bg-secondary">Past</span>
+                            ) : (
+                              <span className="badge bg-success">Active</span>
+                            )}
+                          </td>
+                          <td>
+                            <Link href={`/listings/${rental.listing_id}`} className="btn btn-sm btn-outline-primary">
+                              View
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" className="text-muted mb-3" viewBox="0 0 16 16">
+                  <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                  <path fillRule="evenodd" d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
+                </svg>
+                <h6 className="text-muted">No rental history</h6>
+                <p className="text-muted small mb-3">You haven't rented any properties yet.</p>
+                <Link href="/search" className="btn btn-primary btn-sm">
+                  Browse Properties
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}

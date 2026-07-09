@@ -23,7 +23,7 @@ transporter.verify((error, success) => {
   if (error) {
     console.warn('⚠️ Email configuration is invalid or missing:', error.message);
   } else {
-    console.log('✅ Email server is ready to send messages');
+    console.log('✅ Email server is ready to send messages: ', success.toString());
   }
 });
 

@@ -5,11 +5,11 @@
  */
 
 import { pool } from '../app.js';
+import { sendNotification } from './pushController.js';
 
 // Helper to validate required fields for create/update
 function validateListingPayload(payload) {
-    if (!payload) return ['title', 'description', 'location', 'price', 'property_type', 'bedrooms', 'bathrooms', 'square_meters'];
-    const required = ['title', 'description', 'location', 'price', 'property_type', 'bedrooms', 'bathrooms', 'square_meters'];
+    const required = ['title', 'description', 'location', 'price', 'property_type', 'bedrooms', 'bathrooms'];
     const missing = required.filter((f) => !(f in payload));
     return missing;
 }
@@ -72,9 +72,35 @@ export async function createListing(req, res, next) {
                 });
                 await pool.query(
                     'INSERT INTO listing_photos (listing_id, url, public_id) VALUES (?, ?, ?)',
-                    [listingId, uploadResult.secure_url, uploadResult.public_id]
-                );
+                    [listingId, uploadResult.secure_url, uploadResult.public_id])
             }
+        }
+
+        // Handle photos sent as URLs (for mobile app after Cloudinary upload)
+        if (req.body.photos && Array.isArray(req.body.photos)) {
+            for (const photo of req.body.photos) {
+                if (photo.url) {
+                    await pool.query(
+                        'INSERT INTO listing_photos (listing_id, url, public_id) VALUES (?, ?, ?)',
+                        [listingId, photo.url, photo.public_id || null])
+                }
+            }
+        }
+
+        // Notify students about the new listing
+        try {
+            const queryResult = await pool.query("SELECT id FROM users WHERE role = 'student'");
+            const students = Array.isArray(queryResult) ? queryResult[0] : [];
+            for (const student of students) {
+                sendNotification(
+                    student.id,
+                    'New Listing Available',
+                    `A new property "${title}" in "${location}" has just been listed!`,
+                    { listingId: String(listingId) }
+                ).catch(err => console.error('Failed to send push notification to student:', err));
+            }
+        } catch (err) {
+            console.error('Failed to process push notifications for new listing:', err);
         }
 
         res.status(201).json({ success: true, data: { id: listingId } });
@@ -87,17 +113,24 @@ export async function createListing(req, res, next) {
 export async function getListing(req, res, next) {
     try {
         const { id } = req.params;
+        const requesterId = req.user?.id;
         const [rows] = await pool.query(
-            `SELECT l.*, u.email as landlord_email 
+            `SELECT l.*, u.email as landlord_email, up.full_name as landlord_name, up.phone as landlord_phone 
              FROM listings l 
              JOIN users u ON l.landlord_id = u.id 
-             WHERE l.id = ? AND l.deleted_at IS NULL AND l.flagged = false`,
-            [id]
+             LEFT JOIN user_profiles up ON l.landlord_id = up.user_id
+             WHERE l.id = ? AND l.deleted_at IS NULL AND (l.flagged = false OR l.landlord_id = ?) AND (l.verified = true OR l.landlord_id = ?)`,
+            [id, requesterId ?? null, requesterId ?? null]
         );
         if (!rows.length) {
             return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
         }
         const listing = rows[0];
+        listing.landlord = {
+            email: listing.landlord_email,
+            full_name: listing.landlord_name,
+            phone: listing.landlord_phone
+        };
         // Fetch linked amenities
         const [amenRows] = await pool.query(
             `SELECT a.id, a.name FROM amenities a
@@ -114,9 +147,9 @@ export async function getListing(req, res, next) {
         );
         listing.photos = photoRows;
 
-        // Fetch linked reviews with student details
+        // Fetch linked reviews and their landlord replies
         const [reviewRows] = await pool.query(
-            `SELECT r.id, r.rating, r.comment, r.created_at, u.email as student_email
+            `SELECT r.id, r.rating, r.comment, r.created_at, u.email as student_email 
              FROM reviews r
              JOIN users u ON r.student_id = u.id
              WHERE r.listing_id = ?
@@ -124,23 +157,12 @@ export async function getListing(req, res, next) {
             [id]
         );
 
-        // Fetch landlord replies for all reviews in a single query
-        const reviewIds = reviewRows.map(r => r.id);
-        let replyMap = {};
-        if (reviewIds.length > 0) {
-            const [replyRows] = await pool.query(
-                `SELECT id, reply as text, created_at, review_id
-                 FROM review_replies
-                 WHERE review_id IN (?)`,
-                [reviewIds]
-            );
-            replyMap = replyRows.reduce((acc, row) => {
-                acc[row.review_id] = row;
-                return acc;
-            }, {});
-        }
         for (const review of reviewRows) {
-            review.reply = replyMap[review.id] || null;
+            const [replyRows] = await pool.query(
+                `SELECT id, reply as text, created_at FROM review_replies WHERE review_id = ?`,
+                [review.id]
+            );
+            review.reply = replyRows[0] || null;
         }
         listing.reviews = reviewRows;
 
@@ -179,6 +201,20 @@ export async function updateListing(req, res, next) {
         if (fields.length) {
             values.push(id);
             await pool.query(`UPDATE listings SET ${fields.join(', ')} WHERE id = ? AND deleted_at IS NULL`, values);
+        }
+
+        // Handle photos sent as URLs (for mobile app after Cloudinary upload)
+        if (req.body.photos && Array.isArray(req.body.photos)) {
+            // Remove existing photos
+            await pool.query('DELETE FROM listing_photos WHERE listing_id = ?', [id]);
+            // Add new photos
+            for (const photo of req.body.photos) {
+                if (photo.url) {
+                    await pool.query(
+                        'INSERT INTO listing_photos (listing_id, url, public_id) VALUES (?, ?, ?)',
+                        [id, photo.url, photo.public_id || null])
+                }
+            }
         }
 
         // Update amenities if provided
@@ -309,7 +345,7 @@ export async function randomListings(req, res, next) {
         // Return a random selection of listings for public preview
         // Limit to 12 listings as per BE-08 recommendation
         const [rows] = await pool.query(
-            'SELECT id, title, price, location, property_type FROM listings WHERE deleted_at IS NULL AND flagged = false ORDER BY RAND() LIMIT 12'
+            'SELECT id, title, price, location, property_type FROM listings WHERE deleted_at IS NULL AND flagged = false AND verified = true ORDER BY RAND() LIMIT 12'
         );
         res.status(200).json({ success: true, data: rows });
     } catch (err) {
@@ -332,7 +368,7 @@ export async function searchListings(req, res, next) {
             page = 1,
             limit = 20,
         } = req.query || {};
-        const where = ['deleted_at IS NULL', 'flagged = false'];
+        const where = ['deleted_at IS NULL', 'flagged = false', 'verified = true'];
         const params = [];
         if (location) {
             where.push('location = ?');
@@ -373,9 +409,19 @@ export async function searchListings(req, res, next) {
         let query = `SELECT * FROM listings WHERE ${where.join(' AND ')}`;
 
         // Sorting
-        const allowedSort = ['price', 'created_at', 'location'];
-        const order = allowedSort.includes(sortBy) ? sortBy : 'created_at';
-        query += ` ORDER BY ${order} DESC`;
+        const allowedSort = ['price', '-price', 'created_at', '-created_at', 'location', '-location'];
+        let order = 'created_at';
+        let direction = 'DESC';
+        if (allowedSort.includes(sortBy)) {
+            if (sortBy.startsWith('-')) {
+                order = sortBy.substring(1);
+                direction = 'ASC';
+            } else {
+                order = sortBy;
+                direction = 'DESC';
+            }
+        }
+        query += ` ORDER BY ${order} ${direction}`;
 
         // Pagination
         const offset = (Number(page) - 1) * Number(limit);
@@ -425,9 +471,13 @@ export async function getLandlordDashboard(req, res, next) {
         const [[{ total_contacts }]] = await pool.query('SELECT COUNT(*) AS total_contacts FROM conversations WHERE landlord_id = ?', [landlordId]);
 
         
-        // Listings
+        // Listings with interested student count
         const [listings] = await pool.query(
-            'SELECT * FROM listings WHERE landlord_id = ? AND deleted_at IS NULL ORDER BY created_at DESC',
+            `SELECT l.*, 
+                (SELECT COUNT(*) FROM conversations c WHERE c.listing_id = l.id) as interested_students
+             FROM listings l 
+             WHERE l.landlord_id = ? AND l.deleted_at IS NULL 
+             ORDER BY l.created_at DESC`,
             [landlordId]
         );
 

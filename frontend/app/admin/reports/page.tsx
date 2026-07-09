@@ -9,6 +9,7 @@ import { adminApi } from '@/lib/api';
 interface Report {
   id: number;
   reporter_id: number;
+  reporter_email: string;
   target_type: string;
   target_id: number;
   reason: string;
@@ -118,7 +119,7 @@ export default function AdminReportsPage() {
                 <tr key={r.id}>
                   <td className="px-4">
                     <div className="fw-bold">{r.reason}</div>
-                    <div className="text-muted small">Reporter ID: {r.reporter_id}</div>
+                    <div className="text-muted small">Reporter: {r.reporter_email}</div>
                   </td>
                   <td>
                     <div className="text-muted small">Type: {r.target_type}</div>

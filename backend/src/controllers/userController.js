@@ -3,6 +3,7 @@
  * BE-01: Implement user registration endpoint
  */
 
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
@@ -45,6 +46,22 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: 'Password is required' }),
 });
 
+function createAccessToken(user) {
+  return jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+
+function createRefreshToken(user) {
+  return jwt.sign(
+    { id: user.id, role: user.role, type: 'refresh' },
+    process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
 // ── Registration ────────────────────────────────────────────────────────
 
 export async function register(req, res, next) {
@@ -62,7 +79,8 @@ export async function register(req, res, next) {
       });
     }
 
-    const { email, password, role } = validationResult.data;
+    const { email: rawEmail, password, role } = validationResult.data;
+    const email = rawEmail.trim().toLowerCase();
 
     // 2. Check for duplicate email
     const queryResult = await pool.query(
@@ -97,23 +115,46 @@ export async function register(req, res, next) {
       );
     }
 
-    // 5. Generate JWT with payload { id, role }
-    const token = jwt.sign(
-      { id: userId, role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+    // 5. Generate unique token, set expiry, and store hashed token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await pool.query(
+      'INSERT INTO email_verifications (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+      [userId, tokenHash, expiresAt]
     );
 
-    // 6. Return 201 with JWT
+    // 6. Send verification email
+    try {
+      const { sendEmail } = await import('../config/email.js');
+      const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${rawToken}`;
+      await sendEmail({
+        to: email,
+        subject: 'Verify Your Email Address',
+        text: `Welcome! Please verify your email by clicking: ${verifyLink}`,
+        html: `<div style="font-family: sans-serif; padding: 20px;">
+          <h2 style="color: #0d6efd;">Verify Your Email Address</h2>
+          <p>Thank you for registering with Student Housing!</p>
+          <p>Please click the button below to verify your email address. This link is valid for 24 hours.</p>
+          <a href="${verifyLink}" style="display: inline-block; padding: 10px 20px; background-color: #0d6efd; color: white; text-decoration: none; border-radius: 5px;">Verify Email</a>
+          <p style="margin-top: 20px; color: #666; font-size: 12px;">If you did not create this account, please ignore this email.</p>
+        </div>`
+      });
+    } catch (mailErr) {
+      console.error('Failed to send verification email:', mailErr);
+    }
+
+    // 7. Return 201 with status pending_verification
     res.status(201).json({
       success: true,
       data: {
+        status: 'pending_verification',
         user: {
           id: userId,
           email,
           role,
+          email_verified: false,
         },
-        token,
       },
     });
   } catch (err) {
@@ -138,11 +179,12 @@ export async function login(req, res, next) {
       });
     }
 
-    const { email, password } = validationResult.data;
+    const { email: rawEmail, password } = validationResult.data;
+    const email = rawEmail.trim().toLowerCase();
 
     // 2. Query user by email
     const loginResult = await pool.query(
-      'SELECT id, email, password_hash, role FROM users WHERE email = ? LIMIT 1',
+      'SELECT id, email, password_hash, role, status, email_verified FROM users WHERE email = ? LIMIT 1',
       [email]
     );
     const users = Array.isArray(loginResult) ? loginResult[0] : [];
@@ -165,12 +207,31 @@ export async function login(req, res, next) {
       });
     }
 
+    // 4. Reject suspended accounts
+    if (user.status === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ACCOUNT_SUSPENDED',
+          message: 'Your account has been suspended. Please contact support.',
+        },
+      });
+    }
+
+    if (!user.email_verified) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'EMAIL_UNVERIFIED',
+          message: 'Your email address is unverified. Please verify your email to log in.',
+          resendEndpoint: '/api/auth/resend-verification',
+        }
+      });
+    }
+
     // 4. Generate JWT
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = createAccessToken(user);
+    const refreshToken = createRefreshToken(user);
 
     // 5. Return 200 with JWT
     res.status(200).json({
@@ -180,11 +241,52 @@ export async function login(req, res, next) {
           id: user.id,
           email: user.email,
           role: user.role,
+          email_verified: Boolean(user.email_verified),
         },
         token,
+        refreshToken,
       },
     });
   } catch (err) {
+    next(err);
+  }
+}
+
+export async function refresh(req, res, next) {
+  const pool = getPoolInstance();
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, error: { message: 'Refresh token is required' } });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ success: false, error: { message: 'Invalid refresh token' } });
+    }
+
+    const [users] = await pool.query(
+      'SELECT id, email, role FROM users WHERE id = ? AND status = ? LIMIT 1',
+      [decoded.id, 'active']
+    );
+    if (!users || users.length === 0) {
+      return res.status(401).json({ success: false, error: { message: 'User not found or inactive' } });
+    }
+
+    const user = users[0];
+    res.status(200).json({
+      success: true,
+      data: {
+        user,
+        token: createAccessToken(user),
+        accessToken: createAccessToken(user),
+        refreshToken: createRefreshToken(user),
+      },
+    });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, error: { message: 'Invalid or expired refresh token' } });
+    }
     next(err);
   }
 }
@@ -196,7 +298,7 @@ export async function getProfile(req, res, next) {
   try {
     // req.user is set by auth middleware
     const [users] = await pool.query(
-      'SELECT id, email, role, status, created_at FROM users WHERE id = ? LIMIT 1',
+      'SELECT id, email, role, status, email_verified, created_at FROM users WHERE id = ? LIMIT 1',
       [req.user.id]
     );
 
@@ -209,7 +311,12 @@ export async function getProfile(req, res, next) {
 
     res.status(200).json({
       success: true,
-      data: { user: users[0] },
+      data: {
+        user: {
+          ...users[0],
+          email_verified: Boolean(users[0].email_verified),
+        },
+      },
     });
   } catch (err) {
     next(err);
@@ -273,7 +380,7 @@ export async function suspendUser(req, res, next) {
   const pool = getPoolInstance();
   const userId = parseInt(req.params.id, 10);
   try {
-    // Verify user exists and is active
+    // Verify user exists and is active (not suspended or deleted)
     const [rows] = await pool.query(
       'SELECT id FROM users WHERE id = ? AND status = ?',
       [userId, 'active']
@@ -281,7 +388,7 @@ export async function suspendUser(req, res, next) {
     if (!rows || rows.length === 0) {
       return res.status(400).json({
         success: false,
-        error: { message: 'User not found or already suspended' },
+        error: { message: 'User not found, already suspended, or deleted' },
       });
     }
     await pool.query('UPDATE users SET status = ? WHERE id = ?', ['suspended', userId]);
@@ -289,6 +396,32 @@ export async function suspendUser(req, res, next) {
     res.status(200).json({
       success: true,
       message: 'User suspended',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Admin: Unsuspend User ─────────────────────────────────────────────────
+export async function unsuspendUser(req, res, next) {
+  const pool = getPoolInstance();
+  const userId = parseInt(req.params.id, 10);
+  try {
+    // Verify user exists and is suspended (not deleted)
+    const [rows] = await pool.query(
+      'SELECT id FROM users WHERE id = ? AND status = ?',
+      [userId, 'suspended']
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'User not found, not suspended, or deleted' },
+      });
+    }
+    await pool.query('UPDATE users SET status = ? WHERE id = ?', ['active', userId]);
+    res.status(200).json({
+      success: true,
+      message: 'User unsuspended',
     });
   } catch (err) {
     next(err);
@@ -308,9 +441,12 @@ export async function deleteUser(req, res, next) {
     await pool.query('DELETE FROM rentals WHERE student_id = ? OR landlord_id = ?', [userId, userId]);
     // Delete reviews authored by the user
     await pool.query('DELETE FROM reviews WHERE student_id = ?', [userId]);
-    // Anonymize email and suspend account
+    // Anonymize email and mark as deleted
     const anonymizedEmail = `deleted_${userId}@example.com`;
-    await pool.query('UPDATE users SET email = ?, role = ? WHERE id = ?', [anonymizedEmail, 'suspended', userId]);
+    await pool.query(
+      'UPDATE users SET email = ?, status = ?, email_verified = FALSE WHERE id = ?',
+      [anonymizedEmail, 'deleted', userId]
+    );
     res.status(200).json({
       success: true,
       message: 'User deleted (anonymized) and related data removed',
@@ -324,9 +460,9 @@ export async function deleteUser(req, res, next) {
 export async function getAdminListings(req, res, next) {
   const pool = getPoolInstance();
   try {
-    // Return flagged listings that are not deleted
+    // Return all non-deleted listings (pending verification, flagged, and verified)
     const [listings] = await pool.query(
-      'SELECT * FROM listings WHERE flagged = true AND deleted_at IS NULL',
+      'SELECT l.*, u.email as landlord_email FROM listings l JOIN users u ON l.landlord_id = u.id WHERE l.deleted_at IS NULL ORDER BY l.verified ASC, l.flagged DESC, l.created_at DESC',
       []
     );
     res.status(200).json({ success: true, data: listings });
@@ -348,6 +484,25 @@ export async function verifyListing(req, res, next) {
       return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
     }
     // Return updated listing
+    const [rows] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
+    res.status(200).json({ success: true, data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function rejectListing(req, res, next) {
+  const pool = getPoolInstance();
+  const listingId = parseInt(req.params.id, 10);
+  try {
+    // Mark listing as not verified and flagged (rejected)
+    const [result] = await pool.query(
+      'UPDATE listings SET verified = false, flagged = true WHERE id = ? AND deleted_at IS NULL',
+      [listingId]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ success: false, error: { message: 'Listing not found' } });
+    }
     const [rows] = await pool.query('SELECT * FROM listings WHERE id = ?', [listingId]);
     res.status(200).json({ success: true, data: rows[0] });
   } catch (err) {

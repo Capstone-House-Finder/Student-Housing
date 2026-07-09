@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi } from '@/lib/api';
+import { Eye, EyeOff } from 'lucide-react';
+import { API } from '@/lib/api';
 import { resetPasswordSchema, ResetPasswordFormData } from '@/lib/validations';
 
-function ResetPasswordForm() {
+export function ResetPasswordForm({ token: propToken }: { token?: string } = {}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const tokenRef = useRef<string | null>(null);
   const [serverError, setServerError] = useState('');
+  const [ready, setReady] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const token = searchParams.get('token');
-  const email = searchParams.get('email');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -27,27 +29,31 @@ function ResetPasswordForm() {
   });
 
   useEffect(() => {
-    if (!token || !email) {
+    const t = propToken || new URLSearchParams(window.location.search).get('token');
+    tokenRef.current = t;
+    setHasToken(!!t);
+    if (!t) {
       setServerError('Invalid or missing reset link. Please request a new password reset.');
     }
-  }, [token, email]);
+    setReady(true);
+  }, [propToken]);
 
   const onSubmit = async (data: ResetPasswordFormData) => {
-    if (!token || !email) return;
+    const t = tokenRef.current;
+    if (!t) return;
 
     setIsSubmitting(true);
     setServerError('');
 
-    const result = await authApi.resetPassword({
-      email,
-      resetToken: token,
-      newPassword: data.newPassword,
+    const result = await API.post('/auth/reset-password', {
+      token: t,
+      password: data.newPassword,
     });
 
     if (result.success) {
       setShowSuccess(true);
       setTimeout(() => {
-        router.push('/login');
+        router.push('/login?reset=success');
       }, 3000);
     } else {
       if (result.error?.message?.includes('expired')) {
@@ -61,6 +67,25 @@ function ResetPasswordForm() {
 
     setIsSubmitting(false);
   };
+
+  if (!ready) {
+    return (
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-md-6 col-lg-5">
+            <div className="card shadow">
+              <div className="card-body p-4 text-center">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="mt-3 text-muted">Loading...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showSuccess) {
     return (
@@ -111,7 +136,7 @@ function ResetPasswordForm() {
                 </div>
               )}
 
-              {(!token || !email) ? (
+              {!hasToken ? (
                 <div className="text-center">
                   <Link href="/forgot-password" className="btn btn-primary">
                     Request Password Reset
@@ -123,13 +148,23 @@ function ResetPasswordForm() {
                     <label htmlFor="newPassword" className="form-label">
                       New Password
                     </label>
-                    <input
-                      type="password"
-                      id="newPassword"
-                      className={`form-control ${errors.newPassword ? 'is-invalid' : ''}`}
-                      placeholder="Enter new password"
-                      {...register('newPassword')}
-                    />
+                    <div className="input-group">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        id="newPassword"
+                        className={`form-control ${errors.newPassword ? 'is-invalid' : ''}`}
+                        placeholder="Enter new password"
+                        {...register('newPassword')}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                     {errors.newPassword && (
                       <div className="invalid-feedback">{errors.newPassword.message}</div>
                     )}
@@ -142,13 +177,23 @@ function ResetPasswordForm() {
                     <label htmlFor="confirmPassword" className="form-label">
                       Confirm New Password
                     </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
-                      placeholder="Confirm new password"
-                      {...register('confirmPassword')}
-                    />
+                    <div className="input-group">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        id="confirmPassword"
+                        className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
+                        placeholder="Confirm new password"
+                        {...register('confirmPassword')}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                     {errors.confirmPassword && (
                       <div className="invalid-feedback">{errors.confirmPassword.message}</div>
                     )}
@@ -186,23 +231,20 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="container py-5">
-        <div className="row justify-content-center">
-          <div className="col-md-6 col-lg-5">
-            <div className="card shadow">
-              <div className="card-body p-4 text-center">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-                <p className="mt-3 text-muted">Loading...</p>
-              </div>
+    <div className="container py-5">
+      <div className="row justify-content-center">
+        <div className="col-md-6 col-lg-5">
+          <div className="card shadow">
+            <div className="card-body p-4 text-center">
+              <h4 className="mb-3">Invalid Reset Link</h4>
+              <p className="text-muted mb-4">Please request a new password reset link.</p>
+              <Link href="/forgot-password" className="btn btn-primary">
+                Request Password Reset
+              </Link>
             </div>
           </div>
         </div>
       </div>
-    }>
-      <ResetPasswordForm />
-    </Suspense>
+    </div>
   );
 }

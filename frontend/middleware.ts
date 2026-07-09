@@ -2,6 +2,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+function getRoleFromToken(token: string): string | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.role || null;
+    }
+  } catch (e) {
+    // Invalid token
+  }
+  return null;
+}
+
 // Protected routes that require authentication
 const protectedRoutes = [
   '/dashboard',
@@ -14,28 +27,44 @@ const protectedRoutes = [
 // Routes that redirect to dashboard if already authenticated
 const authRoutes = ['/login', '/register'];
 
-// Helper to decode JWT token in Edge Runtime
-function getRoleFromToken(token: string): string | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload.role || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Check if user is authenticated via sessionStorage (client-side only)
-  // Note: middleware runs on server, so we need to check cookies for httpOnly token
-  // For sessionStorage, we'll do client-side check in layout
-
-  // Alternative: Check for httpOnly cookie (more secure)
+  // Authentication token from cookies
   const token = request.cookies.get('authToken')?.value;
-  const isAuthenticated = !!token;
+  let isAuthenticated = !!token;
+
+  // After authentication check, verify email status and token validity
+  if (isAuthenticated) {
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const meResponse = await fetch(`${apiBase}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Token rejected by backend (expired, malformed, revoked) — treat as unauthenticated
+      if (meResponse.status === 401) {
+        isAuthenticated = false;
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('from', pathname);
+        const resp = NextResponse.redirect(loginUrl);
+        resp.cookies.delete('authToken');
+        resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+        return resp;
+      }
+
+      const meData = await meResponse.json();
+      if (meData.success && meData.data && meData.data.user && meData.data.user.email_verified === false) {
+        // Allow access to verification pages
+        if (!pathname.startsWith('/verify-pending') && !pathname.startsWith('/verify-email')) {
+          const resp = NextResponse.redirect(new URL('/verify-pending', request.url));
+          resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+          return resp;
+        }
+      }
+    } catch (_e) {
+      // Network error — proceed without blocking
+    }
+  }
 
   // Redirect /dashboard to the role-specific dashboard if authenticated
   if (pathname === '/dashboard') {
@@ -51,14 +80,10 @@ export function middleware(request: NextRequest) {
   }
 
   // Redirect authenticated users away from login/register pages
-  if (authRoutes.some(route => pathname.startsWith(route)) && isAuthenticated && token) {
-    const role = getRoleFromToken(token);
-    const dashboardPath = role === 'admin'
-      ? '/admin/dashboard'
-      : role === 'landlord'
-        ? '/landlord/dashboard'
-        : '/student/dashboard';
-    return NextResponse.redirect(new URL(dashboardPath, request.url));
+  if (authRoutes.some(route => pathname.startsWith(route)) && isAuthenticated) {
+    const resp = NextResponse.redirect(new URL('/dashboard', request.url));
+    resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return resp;
   }
 
   // Protect routes that require authentication
@@ -67,10 +92,17 @@ export function middleware(request: NextRequest) {
     // Redirect to login page with return URL
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
+    const resp = NextResponse.redirect(loginUrl);
+    resp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return resp;
   }
 
-  return NextResponse.next();
+  // For protected pages that ARE authenticated, prevent browser from caching them
+  const response = NextResponse.next();
+  if (isProtectedRoute) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
+  return response;
 }
 
 export const config = {

@@ -21,3 +21,4 @@ build/
 backend/uploads/
 .cline/
 docs/
+mocks/

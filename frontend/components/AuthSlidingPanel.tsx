@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 import {
   loginSchema,
   LoginFormData,
@@ -23,15 +24,20 @@ interface AuthSlidingPanelProps {
 
 export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSlidingPanelProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, register: registerUser, isAuthenticated, user } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loginError, setLoginError] = useState('');
+  const [loginMessage, setLoginMessage] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
   const [profileData, setProfileData] = useState<RegisterProfileFormData | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register: registerLoginField,
@@ -69,7 +75,14 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const password = watch('password', '');
 
   useEffect(() => {
-    if (isAuthenticated && user && !showSuccess) {
+    if (searchParams.get('reset') === 'success') {
+      setMode('signin');
+      setLoginMessage('Your password has been reset successfully. Please log in with your new password.');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
       const dashboardPath = user.role === 'admin'
         ? '/admin/dashboard'
         : user.role === 'landlord'
@@ -100,6 +113,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const showSignIn = () => {
     setMode('signin');
     setLoginError('');
+    setLoginMessage('');
     router.replace('/login', { scroll: false });
   };
 
@@ -118,6 +132,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
   const onLoginSubmit = async (data: LoginFormData) => {
     setIsLoginSubmitting(true);
     setLoginError('');
+    setLoginMessage('');
 
     const result = await login(data.email, data.password);
 
@@ -125,6 +140,8 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
       setTimeout(() => {
         router.refresh();
       }, 100);
+    } else if (result.code === 'EMAIL_UNVERIFIED') {
+      router.push(`/verify-pending?email=${encodeURIComponent(data.email)}`);
     } else if (result.error?.includes('credentials') || result.error?.includes('password')) {
       setLoginError('Invalid email or password. Please try again.');
     } else {
@@ -155,12 +172,7 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
     if (result.success) {
       setShowSuccess(true);
       setTimeout(() => {
-        const dashboardPath = data.role === 'admin'
-          ? '/admin/dashboard'
-          : data.role === 'landlord'
-            ? '/landlord/dashboard'
-            : '/student/dashboard';
-        router.push(dashboardPath);
+        router.push(`/verify-pending?email=${encodeURIComponent(data.email)}`);
       }, 2000);
     } else if (result.error?.includes('duplicate') || result.error?.includes('already')) {
       setRegisterError('This email is already registered. Please try logging in instead.');
@@ -185,6 +197,12 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
               </div>
             )}
 
+            {loginMessage && (
+              <div className="alert alert-success" role="alert">
+                {loginMessage}
+              </div>
+            )}
+
             <form onSubmit={handleLoginSubmit(onLoginSubmit)}>
               <div className="mb-3">
                 <label htmlFor="loginEmail" className="form-label">Email Address</label>
@@ -202,13 +220,23 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
 
               <div className="mb-3">
                 <label htmlFor="loginPassword" className="form-label">Password</label>
-                <input
-                  type="password"
-                  id="loginPassword"
-                  className={`form-control ${loginErrors.password ? 'is-invalid' : ''}`}
-                  placeholder="Enter your password"
-                  {...registerLoginField('password')}
-                />
+                <div className="input-group">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    id="loginPassword"
+                    className={`form-control ${loginErrors.password ? 'is-invalid' : ''}`}
+                    placeholder="Enter your password"
+                    {...registerLoginField('password')}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    tabIndex={-1}
+                  >
+                    {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 {loginErrors.password && (
                   <div className="invalid-feedback">{loginErrors.password.message}</div>
                 )}
@@ -333,13 +361,23 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
 
                     <div className="mb-3">
                       <label htmlFor="registerPassword" className="form-label">Password</label>
-                      <input
-                        type="password"
-                        id="registerPassword"
-                        className={`form-control ${accountErrors.password ? 'is-invalid' : ''}`}
-                        placeholder="Create a password"
-                        {...registerAccountField('password')}
-                      />
+                      <div className="input-group">
+                        <input
+                          type={showRegisterPassword ? 'text' : 'password'}
+                          id="registerPassword"
+                          className={`form-control ${accountErrors.password ? 'is-invalid' : ''}`}
+                          placeholder="Create a password"
+                          {...registerAccountField('password')}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                          tabIndex={-1}
+                        >
+                          {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                       {accountErrors.password && (
                         <div className="invalid-feedback">{accountErrors.password.message}</div>
                       )}
@@ -360,13 +398,23 @@ export default function AuthSlidingPanel({ initialMode = 'signin' }: AuthSliding
 
                     <div className="mb-3">
                       <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-                      <input
-                        type="password"
-                        id="confirmPassword"
-                        className={`form-control ${accountErrors.confirmPassword ? 'is-invalid' : ''}`}
-                        placeholder="Confirm your password"
-                        {...registerAccountField('confirmPassword')}
-                      />
+                      <div className="input-group">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          id="confirmPassword"
+                          className={`form-control ${accountErrors.confirmPassword ? 'is-invalid' : ''}`}
+                          placeholder="Confirm your password"
+                          {...registerAccountField('confirmPassword')}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                       {accountErrors.confirmPassword && (
                         <div className="invalid-feedback">{accountErrors.confirmPassword.message}</div>
                       )}

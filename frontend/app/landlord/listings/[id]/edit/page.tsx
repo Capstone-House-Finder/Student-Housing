@@ -182,7 +182,7 @@ export default function EditListingPage() {
     const result = await listingsApi.update(token, listingId, formData);
 
     if (result.success) {
-      router.push('/landlord/dashboard');
+      router.push(`/listings/${listingId}`);
     } else {
       setSubmitError(result.error?.message || 'Failed to update listing');
     }
@@ -369,7 +369,6 @@ export default function EditListingPage() {
                       type="number"
                       id="squareMeters"
                       className={`form-control ${errors.square_meters ? 'is-invalid' : ''}`}
-                      min="0"
                       {...register('square_meters', { valueAsNumber: true })}
                     />
                     {errors.square_meters && (

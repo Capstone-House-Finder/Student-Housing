@@ -80,13 +80,13 @@ export async function getLandlordRentals(req, res, next) {
     }
 
     const [rows] = await pool.query(
-      `SELECT 
-        r.id, 
-        r.start_date, 
-        r.end_date, 
-        r.created_at, 
-        u.email as student_email, 
-        up.full_name as student_name, 
+      `SELECT
+        r.id,
+        r.start_date,
+        r.end_date,
+        r.created_at,
+        u.email as student_email,
+        up.full_name as student_name,
         l.title as listing_title,
         l.id as listing_id
       FROM rentals r
@@ -100,6 +100,47 @@ export async function getLandlordRentals(req, res, next) {
 
     res.status(200).json({ success: true, data: rows });
   } catch (err) {
+    next(err);
+  }
+}
+
+export async function getStudentRentals(req, res, next) {
+  try {
+    const studentId = req.user?.id;
+    console.log('[getStudentRentals] Student ID:', studentId);
+    console.log('[getStudentRentals] Full user:', req.user);
+    if (!studentId) {
+      return res.status(401).json({ success: false, error: { message: 'Unauthenticated' } });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT
+        r.id,
+        r.start_date,
+        r.end_date,
+        r.created_at,
+        l.title as listing_title,
+        l.id as listing_id,
+        l.location,
+        l.price,
+        u.email as landlord_email,
+        up.full_name as landlord_name,
+        up.phone as landlord_phone
+      FROM rentals r
+      JOIN listings l ON r.listing_id = l.id
+      JOIN users u ON r.landlord_id = u.id
+      LEFT JOIN user_profiles up ON r.landlord_id = up.user_id
+      WHERE r.student_id = ?
+      ORDER BY r.created_at DESC`,
+      [studentId]
+    );
+
+    console.log('[getStudentRentals] Query result rows:', rows);
+    console.log('[getStudentRentals] Number of rentals found:', rows.length);
+
+    res.status(200).json({ success: true, data: rows });
+  } catch (err) {
+    console.log('[getStudentRentals] Error:', err);
     next(err);
   }
 }

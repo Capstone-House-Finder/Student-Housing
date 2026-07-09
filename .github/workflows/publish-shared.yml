@@ -1,0 +1,38 @@
+name: Publish Shared Package
+
+on:
+  push:
+    branches: 
+      - main
+      - develop 
+      - "hotfix/**" 
+      - "release/**" 
+      - "feature/**"
+      - "bugfix/**"
+    paths: ['packages/shared/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/shared
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@capstone-house-finder'
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}

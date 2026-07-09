@@ -15,8 +15,11 @@ interface Listing {
   verified: boolean;
   flagged: boolean;
   landlord_id: number;
+  landlord_email?: string;
   created_at: string;
 }
+
+type Tab = 'all' | 'pending' | 'approved' | 'flagged';
 
 export default function AdminListingsPage() {
   const router = useRouter();
@@ -26,6 +29,7 @@ export default function AdminListingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<Tab>('pending');
 
   useEffect(() => {
     if (!authLoading) {
@@ -62,10 +66,21 @@ export default function AdminListingsPage() {
     if (!token) return;
     const response = await adminApi.verifyListing(token, listingId);
     if (response.success) {
-      setSuccessMessage('Listing verified successfully');
+      setSuccessMessage('Listing approved successfully');
       fetchListings();
     } else {
-      setError(response.error?.message || 'Failed to verify listing');
+      setError(response.error?.message || 'Failed to approve listing');
+    }
+  };
+
+  const handleRejectListing = async (listingId: number) => {
+    if (!token) return;
+    const response = await adminApi.rejectListing(token, listingId);
+    if (response.success) {
+      setSuccessMessage('Listing rejected');
+      fetchListings();
+    } else {
+      setError(response.error?.message || 'Failed to reject listing');
     }
   };
 
@@ -80,6 +95,22 @@ export default function AdminListingsPage() {
     } else {
       setError(response.error?.message || 'Failed to delete listing');
     }
+  };
+
+  const filteredListings = listings.filter((l) => {
+    switch (activeTab) {
+      case 'pending': return !l.verified && !l.flagged;
+      case 'approved': return l.verified;
+      case 'flagged': return l.flagged;
+      default: return true;
+    }
+  });
+
+  const tabCounts = {
+    all: listings.length,
+    pending: listings.filter(l => !l.verified && !l.flagged).length,
+    approved: listings.filter(l => l.verified).length,
+    flagged: listings.filter(l => l.flagged).length,
   };
 
   if (authLoading || isLoading) {
@@ -103,7 +134,7 @@ export default function AdminListingsPage() {
 
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h3">Manage Listings</h1>
-        <div className="text-muted small">{listings.length} Pending/Flagged Listings</div>
+        <div className="text-muted small">{listings.length} total listings</div>
       </div>
 
       {error && <div className="alert alert-danger alert-dismissible fade show" role="alert">
@@ -115,6 +146,21 @@ export default function AdminListingsPage() {
         {successMessage}
         <button type="button" className="btn-close" onClick={() => setSuccessMessage('')}></button>
       </div>}
+
+      {/* Filter Tabs */}
+      <ul className="nav nav-tabs mb-3">
+        {(['all', 'pending', 'approved', 'flagged'] as Tab[]).map((tab) => (
+          <li className="nav-item" key={tab}>
+            <button
+              className={`nav-link ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <span className="badge bg-secondary ms-1">{tabCounts[tab]}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
 
       <div className="card shadow-sm border-0">
         <div className="table-responsive">
@@ -129,24 +175,24 @@ export default function AdminListingsPage() {
               </tr>
             </thead>
             <tbody>
-              {listings.map((l) => (
+              {filteredListings.map((l) => (
                 <tr key={l.id}>
                   <td className="px-4">
                     <div className="fw-bold">{l.title}</div>
                     <div className="text-muted small">{l.location}</div>
-                    <div className="text-muted extra-small">ID: {l.id} | Landlord: {l.landlord_id}</div>
+                    <div className="text-muted extra-small">ID: {l.id} | Landlord: {l.landlord_email || l.landlord_id}</div>
                   </td>
                   <td>
                     <span className="badge bg-light text-dark border">
                       {l.property_type.charAt(0).toUpperCase() + l.property_type.slice(1)}
                     </span>
                   </td>
-                  <td>${l.price.toLocaleString()}</td>
+                  <td>{l.price.toLocaleString()} FCFA</td>
                   <td>
                     <div className="d-flex flex-column gap-1">
-                      {l.flagged && <span className="badge bg-danger">Flagged</span>}
-                      {!l.verified && <span className="badge bg-warning text-dark">Pending Verification</span>}
-                      {l.verified && !l.flagged && <span className="badge bg-success">Verified</span>}
+                      {l.flagged && <span className="badge bg-danger">Flagged / Rejected</span>}
+                      {!l.verified && !l.flagged && <span className="badge bg-warning text-dark">Pending Approval</span>}
+                      {l.verified && <span className="badge bg-success">Approved</span>}
                     </div>
                   </td>
                   <td className="text-end px-4">
@@ -154,15 +200,31 @@ export default function AdminListingsPage() {
                       <Link href={`/listings/${l.id}`} className="btn btn-sm btn-outline-primary">
                         View
                       </Link>
-                      {!l.verified && (
-                        <button 
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleVerifyListing(l.id)}
+                      {!l.verified && !l.flagged && (
+                        <>
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleVerifyListing(l.id)}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleRejectListing(l.id)}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {l.verified && (
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleRejectListing(l.id)}
                         >
-                          Verify
+                          Unapprove
                         </button>
                       )}
-                      <button 
+                      <button
                         className="btn btn-sm btn-outline-danger"
                         onClick={() => handleDeleteListing(l.id)}
                       >
@@ -172,10 +234,10 @@ export default function AdminListingsPage() {
                   </td>
                 </tr>
               ))}
-              {listings.length === 0 && (
+              {filteredListings.length === 0 && (
                 <tr>
                   <td colSpan={5} className="text-center py-5 text-muted">
-                    No pending or flagged listings found
+                    No listings found in this category
                   </td>
                 </tr>
               )}

@@ -17,6 +17,7 @@ CREATE TABLE users (
   password_hash   VARCHAR(255)  NOT NULL,
   role            ENUM('student','landlord','admin') NOT NULL,
   status          ENUM('active','suspended') NOT NULL DEFAULT 'active',
+  email_verified  BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -41,12 +42,32 @@ CREATE TABLE password_resets (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE email_verifications (
+  id          INT           AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT           NOT NULL,
+  token_hash  VARCHAR(255)  NOT NULL UNIQUE,
+  expires_at  TIMESTAMP     NOT NULL,
+  used        BOOLEAN       NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE token_blocklist (
   id          INT           AUTO_INCREMENT PRIMARY KEY,
   user_id     INT           NOT NULL,
   jti         VARCHAR(255)  NOT NULL UNIQUE,
   expires_at  TIMESTAMP     NOT NULL,
   created_at  TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE push_tokens (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT NOT NULL,
+  token       VARCHAR(255) NOT NULL UNIQUE,
+  platform    ENUM('ios', 'android') NOT NULL,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -59,6 +80,9 @@ CREATE TABLE listings (
   description   TEXT            NOT NULL,
   location      VARCHAR(255)    NOT NULL,
   price         DECIMAL(10, 2)  NOT NULL,
+  bedrooms      INT             DEFAULT 0,
+  bathrooms     DECIMAL(3, 1)   DEFAULT 0.0,
+  square_feet   INT             DEFAULT 0,
   property_type ENUM('apartment','studio','room','house') NOT NULL,
   status        ENUM('available','rented','under_negotiation') NOT NULL DEFAULT 'available',
   verified      BOOLEAN         NOT NULL DEFAULT FALSE,
@@ -143,11 +167,13 @@ CREATE TABLE reviews (
   rental_id   INT       NOT NULL,
   rating      TINYINT   NOT NULL CHECK (rating BETWEEN 1 AND 5),
   comment     TEXT,
+  status      ENUM('approved','flagged','deleted') NOT NULL DEFAULT 'approved',
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (listing_id) REFERENCES listings(id) ON DELETE CASCADE,
   FOREIGN KEY (student_id) REFERENCES users(id)    ON DELETE CASCADE,
   FOREIGN KEY (rental_id)  REFERENCES rentals(id)  ON DELETE CASCADE,
-  UNIQUE KEY uq_one_review_per_rental (rental_id)
+  UNIQUE KEY uq_one_review_per_rental (rental_id),
+  INDEX idx_status (status)
 );
 
 CREATE TABLE review_replies (

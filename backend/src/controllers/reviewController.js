@@ -6,6 +6,7 @@
  */
 
 import { pool } from '../app.js';
+import { sendNotification } from './pushController.js';
 
 /**
  * POST /api/listings/:id/reviews
@@ -78,7 +79,7 @@ export async function replyReview(req, res, next) {
 
     // Fetch the review to determine the associated listing and its landlord
     const [reviewRows] = await pool.query(
-      'SELECT listing_id FROM reviews WHERE id = ? LIMIT 1',
+      'SELECT student_id, listing_id FROM reviews WHERE id = ? LIMIT 1',
       [reviewId]
     );
     if (!reviewRows.length) {
@@ -119,7 +120,63 @@ export async function replyReview(req, res, next) {
       [reviewId, landlord.id, reply]
     );
     const replyId = result.insertId;
+
+    // Notify the student about the reply
+    try {
+      const studentId = reviewRows[0].student_id;
+      sendNotification(
+        studentId,
+        'Landlord Replied to Your Review',
+        'A landlord has replied to your review on their listing.',
+        { listingId: String(listingId) }
+      ).catch(err => console.error('Failed to send reply push notification to student:', err));
+    } catch (err) {
+      console.error('Failed to send reply push notification:', err);
+    }
+
     return res.status(201).json({ success: true, data: { id: replyId } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getAllReviews(req, res, next) {
+  try {
+    const [reviews] = await pool.query(
+      `SELECT r.*, l.title as listing_title, u.email as student_email, l.landlord_id
+       FROM reviews r
+       JOIN listings l ON r.listing_id = l.id
+       JOIN users u ON r.student_id = u.id
+       ORDER BY r.created_at DESC`
+    );
+    return res.status(200).json({ success: true, data: reviews });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateReviewStatus(req, res, next) {
+  try {
+    const reviewId = req.params.id;
+    const { status } = req.body;
+
+    if (!['approved', 'deleted', 'flagged'].includes(status)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid status' } });
+    }
+
+    if (status === 'deleted') {
+      const [result] = await pool.query('DELETE FROM reviews WHERE id = ?', [reviewId]);
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, error: { message: 'Review not found' } });
+      }
+      return res.status(200).json({ success: true, message: 'Review deleted' });
+    } else {
+      const [result] = await pool.query('UPDATE reviews SET status = ? WHERE id = ?', [status, reviewId]);
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, error: { message: 'Review not found' } });
+      }
+      return res.status(200).json({ success: true, message: `Review ${status}` });
+    }
   } catch (err) {
     next(err);
   }

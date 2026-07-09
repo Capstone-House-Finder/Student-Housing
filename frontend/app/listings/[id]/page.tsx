@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { listingsApi, reviewsApi } from '@/lib/api';
+import { listingsApi, reviewsApi, rentalsApi } from '@/lib/api';
 import StarRating from '@/components/StarRating';
 import ReportModal from '@/components/ReportModal';
 
@@ -76,6 +76,7 @@ export default function ListingDetailPage() {
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [hasRental, setHasRental] = useState(false);
 
   const listingId = Number(params.id);
 
@@ -99,10 +100,22 @@ export default function ListingDetailPage() {
       setIsLoading(false);
     };
 
+    const checkRental = async () => {
+      if (!token || user?.role !== 'student') return;
+
+      const rentalsResponse = await rentalsApi.getStudentRentals(token);
+      if (rentalsResponse.success && rentalsResponse.data) {
+        const rentals = rentalsResponse.data as Array<{ listing_id: number }>;
+        const hasRentalForListing = rentals.some(r => r.listing_id === listingId);
+        setHasRental(hasRentalForListing);
+      }
+    };
+
     if (token) {
       fetchListing();
+      checkRental();
     }
-  }, [token, listingId, authLoading, isAuthenticated, router]);
+  }, [token, listingId, authLoading, isAuthenticated, router, user?.role]);
 
   const handleContact = async () => {
     if (!token) return;
@@ -212,7 +225,7 @@ export default function ListingDetailPage() {
     : defaultImage;
 
   const isLandlord = user?.role === 'landlord' && user?.id === listing.landlord_id;
-  const canReview = user?.role === 'student';
+  const canReview = user?.role === 'student' && hasRental;
 
   return (
     <div className="container py-4">
@@ -421,48 +434,54 @@ export default function ListingDetailPage() {
             <div className="card-body">
               <h4>Reviews</h4>
 
-              {/* Review Form - Only for students */}
-              {canReview && !reviewSuccess && (
-                <form onSubmit={handleSubmitReview} className="mb-4 p-3 bg-light rounded">
-                  <h5>Leave a Review</h5>
-                  {reviewError && (
-                    <div className="alert alert-danger">{reviewError}</div>
-                  )}
-                  <div className="mb-3">
-                    <label className="form-label">Your Rating *</label>
-                    <div>
-                      <StarRating
-                        rating={reviewRating}
-                        size="lg"
-                        interactive
-                        onChange={setReviewRating}
-                      />
-                    </div>
-                    {reviewRating === 0 && (
-                      <small className="text-muted">Click the stars to rate</small>
+              {/* Review Form - Only for students with confirmed rental */}
+              {user?.role === 'student' && !reviewSuccess && (
+                canReview ? (
+                  <form onSubmit={handleSubmitReview} className="mb-4 p-3 bg-light rounded">
+                    <h5>Leave a Review</h5>
+                    {reviewError && (
+                      <div className="alert alert-danger">{reviewError}</div>
                     )}
+                    <div className="mb-3">
+                      <label className="form-label">Your Rating *</label>
+                      <div>
+                        <StarRating
+                          rating={reviewRating}
+                          size="lg"
+                          interactive
+                          onChange={setReviewRating}
+                        />
+                      </div>
+                      {reviewRating === 0 && (
+                        <small className="text-muted">Click the stars to rate</small>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="reviewComment" className="form-label">
+                        Comment (Optional)
+                      </label>
+                      <textarea
+                        id="reviewComment"
+                        className="form-control"
+                        rows={3}
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Share your experience..."
+                      ></textarea>
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={isSubmittingReview || reviewRating === 0}
+                    >
+                      {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="alert alert-info mb-4">
+                    <p className="mb-0">You need a confirmed rental for this property to leave a review.</p>
                   </div>
-                  <div className="mb-3">
-                    <label htmlFor="reviewComment" className="form-label">
-                      Comment (Optional)
-                    </label>
-                    <textarea
-                      id="reviewComment"
-                      className="form-control"
-                      rows={3}
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Share your experience..."
-                    ></textarea>
-                  </div>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={isSubmittingReview || reviewRating === 0}
-                  >
-                    {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
-                  </button>
-                </form>
+                )
               )}
 
               {reviewSuccess && (

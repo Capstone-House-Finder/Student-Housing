@@ -2,6 +2,7 @@
 
 import { pool } from '../app.js';
 import { URL, URLSearchParams } from 'url';
+import { sendNotification } from './pushController.js';
 
 export async function contactListing(req, res, next) {
   // Note: WhatsApp integration (sending a message) is not performed here. The endpoint only creates the conversation and returns a Click‑to‑Chat URL.
@@ -51,7 +52,8 @@ export async function contactListing(req, res, next) {
     const message = `Title: Listing Inquiry\nFrom: ${studentEmail}\n\nGreetings.\n\tI am ${studentFullName}, and I am interested by your property ${listingTitle} located at ${listingLocation}. I would really appreciate if we could discuss about it via this channel.`;
 
     if (landlordPhone) {
-      const base = `https://wa.me/${landlordPhone}`;
+      const cleanPhone = landlordPhone.replace(/\D/g, '');
+      const base = `https://wa.me/${cleanPhone}`;
       const url = new URL(base);
       url.search = new URLSearchParams({ text: message }).toString();
       whatsappUrl = url.toString();
@@ -72,6 +74,18 @@ export async function contactListing(req, res, next) {
         <p style="color: #666; font-size: 12px;">This is an automated notification from Student Housing Platform.</p>
       </div>`
     }).catch(err => console.error('Failed to send contact email:', err));
+
+    // Send push notification to landlord
+    try {
+      sendNotification(
+        landlordId,
+        'New Inquiry Received',
+        `You have received a new inquiry from ${studentFullName} for your property "${listingTitle}".`,
+        { screen: 'landlord/dashboard' }
+      ).catch(err => console.error('Failed to send inquiry push notification to landlord:', err));
+    } catch (err) {
+      console.error('Failed to send inquiry push notification:', err);
+    }
 
 
     // Check if conversation already exists (unique per student/listing)

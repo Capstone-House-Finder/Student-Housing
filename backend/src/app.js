@@ -18,6 +18,7 @@ import reportRoutes from './Routes/reportRoutes.js';
 import reviewRoutes from './Routes/reviewRoutes.js';
 import amenityRoutes from './Routes/amenityRoutes.js';
 import contactRoutes from './Routes/contactRoutes.js';
+import pushRoutes from './Routes/pushRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 import { notFound } from './middleware/notFound.js';
@@ -39,14 +40,15 @@ const pool = getDatabasePool();
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:3000',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'exp://localhost:8081',
 ].filter(Boolean);
 
 const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-      
+
         if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
             callback(null, true);
         } else {
@@ -63,8 +65,17 @@ app.use(cors(corsOptions));
 // app.use(cors({ origin: "*" }));
 
 // Middleware
-app.use(express.json());
+app.use((req, res, next) => {
+    express.json()(req, res, (err) => {
+        if (err) {
+            // If JSON parsing fails, set req.body to empty object and continue
+            req.body = {};
+        }
+        next();
+    });
+});
 app.use(express.urlencoded({ extended: true }));
+app.use('/.well-known', express.static(path.join(projectRoot, 'backend', '.well-known')));
 
 // Request logging
 app.use((req, res, next) => {
@@ -121,6 +132,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/amenities', amenityRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/push', pushRoutes);
 
 
 // 404 handler
@@ -129,10 +141,16 @@ app.use(notFound);
 // Error handling middleware (should be last)
 app.use(errorHandler);
 
-// Start server
+/** 
+ * Uncomment the following lines to enable HTTPS with self-signed certificates for local development.
+ * Make sure to generate cert.pem and key.pem files and place them in the config directory.
+ * Note: Browsers will show a security warning for self-signed certificates.
+// Start server*/
 app.listen(port, () => {
     console.log(`Server listening at port ${port}`);
 });
+
+
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {

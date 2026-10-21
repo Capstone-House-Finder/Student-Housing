@@ -106,10 +106,10 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ## 📚 Documentation
 
-- [Frontend Workflow](frontend.md)
-- [Backend API Reference](backend_api.md) 
+- [Frontend Workflow](docs/frontend.md)
+- [Backend API Reference](docs/backend_api.md) 
 - [Database Schema](mysql/init/01_schema.sql)
-- [Testing Guide](TESTING.md)
+- [Testing Guide](docs/TESTING.md)
 
 ## 🤝 Contributing
 
@@ -117,4 +117,4 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 2. Create your feature branch
 3. Submit a Pull Request
 4. Ensure all tests pass (`npm test -- --watch`)
-5. Follow the [Contribution Guidelines](CONTRIBUTING.md)
+5. Follow the [Contribution Guidelines](docs/CONTRIBUTING.md)
